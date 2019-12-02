@@ -46,7 +46,7 @@ Usually some window is used to display the shopping list, for example, we have a
 ```
   [Store setLockRules:^(UIViewController *controller)
   {
-      // Например consumable покупка
+      // For example consumable purchase
       NSArray <StoreItem *> *consumable =
       [Store storeItemsWithType:StoreItemTypeConsumable];
 
@@ -60,7 +60,7 @@ Usually some window is used to display the shopping list, for example, we have a
           return YES; // lock
       }
 
-      else // Если есть, потратим ее
+      else // If there is, we will spend it
           [consumable.firstObject consumablePurchaseReset];
 
       return NO; // no lock
