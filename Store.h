@@ -1,6 +1,6 @@
 //
 //  Store.h
-//  Version 1.4
+//  Version 1.6
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -24,7 +24,7 @@
 //
 //          if (Store.storeItemsPurchased.count == 0)
 //              [self.window.rootViewController
-//               presentViewController:MyStoreController
+//               presentViewController:StoreViewController.newFromStoryboard
 //               animated:YES
 //               completion:nil];
 //      }];
