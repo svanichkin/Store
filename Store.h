@@ -1,6 +1,6 @@
 //
 //  Store.h
-//  Version 1.6
+//  Version 1.7.1
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -176,7 +176,7 @@ typedef BOOL(^LockRules)(UIViewController *controller);
 
 // Ключ для валидации чека на сервере эпл (берется из кабинета встроенных покупок)
 +(void)setupWithSharedSecret:(NSString              *)sharedSecret
-                  storeItems:(NSArray <StoreItem *> *)storeItems // например: @[@"com.purchase.year".consumable]
+                  storeItems:(NSArray <StoreItem *> *)storeItems // @[@"com.purchase.year".storeItem.consumable]
                   completion:(RestoreCompletion      )completion;
 
 // Если isReady по каким то причинам NO, нужно еще раз произвести восстановление покупок

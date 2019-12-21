@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 1.6
+//  Version 1.7.1
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -543,7 +543,8 @@ updatedTransactions:(NSArray        *)transactions
     NSMutableArray.new;
     
     for (StoreItem *storeItem in Store.current.storeItems)
-        if (storeItem.type == type)
+        if (storeItem.type == type &&
+            storeItem.title.length)
             [storeItems addObject:storeItem];
     
     NSSortDescriptor *sortDescriptor =
@@ -976,7 +977,7 @@ didFailWithError:(NSError   *)error
             return;
         }
         
-        //NSLog(@"jsonResponse:%@", jsonResponse);
+        NSLog(@"[INFO] Store: jsonResponse:%@", jsonResponse);
         
         /*
          {
@@ -1007,40 +1008,89 @@ didFailWithError:(NSError   *)error
          }
          */
         
-        NSArray *dictLatestReceiptsInfo =
-        jsonResponse[@"latest_receipt_info"];
+        NSError *receiptError = nil;
         
-        if ([jsonResponse[@"status"] integerValue] == 21004)
-        {
-            NSError *receiptError =
+        if ([jsonResponse[@"status"] integerValue] == 21000)
+            receiptError =
             [NSError
              errorWithDomain:@"Store"
              code:-1
-             userInfo:@{NSLocalizedDescriptionKey:@"Shared secret incorrected."}];
-            
-            dispatch_async(dispatch_get_main_queue(), ^(void)
-            {
-                NSLog(@"[ERROR] Store: %@",
-                      receiptError.localizedDescription);
-                
-                [self returnCompletionsWithError:receiptError];
-                
-                [NSException
-                 raise:@"Store"
-                 format:@"Shared secret incorrected."];
-            });
-            
-            return;
-        }
+             userInfo:@{NSLocalizedDescriptionKey:@"The App Store could not read the JSON object you provided."}];
         
-        if (![jsonResponse[@"receipt"][@"bundle_id"] isEqualToString:NSBundle.mainBundle.bundleIdentifier])
-        {
-            NSError *receiptError =
+        if ([jsonResponse[@"status"] integerValue] == 21002)
+            receiptError =
+            [NSError
+             errorWithDomain:@"Store"
+             code:-1
+             userInfo:@{NSLocalizedDescriptionKey:@"The data in the receipt-data property was malformed or missing."}];
+        
+        if ([jsonResponse[@"status"] integerValue] == 21003)
+            receiptError =
+            [NSError
+             errorWithDomain:@"Store"
+             code:-1
+             userInfo:@{NSLocalizedDescriptionKey:@"The receipt could not be authenticated."}];
+        
+        if ([jsonResponse[@"status"] integerValue] == 21004)
+            receiptError =
+            [NSError
+             errorWithDomain:@"Store"
+             code:-1
+             userInfo:@{NSLocalizedDescriptionKey:@"The shared secret you provided does not match the shared secret on file for your account."}];
+        
+        if ([jsonResponse[@"status"] integerValue] == 21005)
+            receiptError =
+            [NSError
+             errorWithDomain:@"Store"
+             code:-1
+             userInfo:@{NSLocalizedDescriptionKey:@"The receipt server is not currently available."}];
+        
+        if ([jsonResponse[@"status"] integerValue] == 21006)
+            receiptError =
+            [NSError
+             errorWithDomain:@"Store"
+             code:-1
+             userInfo:@{NSLocalizedDescriptionKey:@"This receipt is valid but the subscription has expired. When this status code is returned to your server, the receipt data is also decoded and returned as part of the response. Only returned for iOS 6 style transaction receipts for auto-renewable subscriptions."}];
+        
+        if ([jsonResponse[@"status"] integerValue] == 21007)
+            receiptError =
+            [NSError
+             errorWithDomain:@"Store"
+             code:-1
+             userInfo:@{NSLocalizedDescriptionKey:@"This receipt is from the test environment, but it was sent to the production environment for verification. Send it to the test environment instead."}];
+        
+        if ([jsonResponse[@"status"] integerValue] == 21008)
+            receiptError =
+            [NSError
+             errorWithDomain:@"Store"
+             code:-1
+             userInfo:@{NSLocalizedDescriptionKey:@"This receipt is from the production environment, but it was sent to the test environment for verification. Send it to the production environment instead."}];
+        
+        if ([jsonResponse[@"status"] integerValue] == 21010)
+            receiptError =
+            [NSError
+             errorWithDomain:@"Store"
+             code:-1
+             userInfo:@{NSLocalizedDescriptionKey:@"This receipt could not be authorized. Treat this the same as if a purchase was never made."}];
+        
+        if ([jsonResponse[@"status"] integerValue] >= 21100 &&
+            [jsonResponse[@"status"] integerValue] <= 21199)
+            receiptError =
+            [NSError
+             errorWithDomain:@"Store"
+             code:-1
+             userInfo:@{NSLocalizedDescriptionKey:@"Internal data access error."}];
+        
+        if (!receiptError &&
+            ![jsonResponse[@"receipt"][@"bundle_id"] isEqualToString:NSBundle.mainBundle.bundleIdentifier])
+            receiptError =
             [NSError
              errorWithDomain:@"Store"
              code:-1
              userInfo:@{NSLocalizedDescriptionKey:@"Bundle is incorrected."}];
-            
+        
+        if (receiptError)
+        {
             dispatch_async(dispatch_get_main_queue(), ^(void)
             {
                 NSLog(@"[ERROR] Store: %@",
@@ -1050,12 +1100,12 @@ didFailWithError:(NSError   *)error
                 
                 [NSException
                  raise:@"Store"
-                 format:@"Bundle is incorrected."];
+                 format:@"%@", receiptError.localizedDescription];
             });
             
             return;
         }
-        
+                
         self.purchasedVersion =
         jsonResponse[@"receipt"][@"original_application_version"];
         
@@ -1075,11 +1125,14 @@ didFailWithError:(NSError   *)error
         NSMutableDictionary <NSString *, NSDictionary *> *receipts =
         NSMutableDictionary.new;
         
+        NSArray *receiptInApp =
+        jsonResponse[@"receipt"][@"in_app"];
+        
         for (StoreItem *storeItem in self.storeItems)
         {
             NSDictionary *lastReceipt = nil;
             
-            for (NSDictionary *receipt in dictLatestReceiptsInfo)
+            for (NSDictionary *receipt in receiptInApp)
             {
                 if ([receipt[@"product_id"] isEqualToString:storeItem.identifier] == NO)
                     continue;
