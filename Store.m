@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 1.7.1
+//  Version 1.7.2
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -615,8 +615,14 @@ updatedTransactions:(NSArray        *)transactions
                 
         [NSNotificationCenter.defaultCenter
          addObserver:self
-         selector:@selector(applicationWillEnterForeground)
+         selector:@selector(willEnterForegroundNotification)
          name:UIApplicationWillEnterForegroundNotification
+         object:nil];
+        
+        [NSNotificationCenter.defaultCenter
+         addObserver:self
+         selector:@selector(willEnterForegroundNotification)
+         name:UISceneWillEnterForegroundNotification
          object:nil];
     }
     
@@ -630,7 +636,7 @@ updatedTransactions:(NSArray        *)transactions
      Store.current.storeItems.count);
 }
 
--(void)applicationWillEnterForeground
+-(void)willEnterForegroundNotification
 {
     NSLog(@"[INFO] Store: Application will enter foreground");
     
@@ -1386,6 +1392,12 @@ didFailWithError:(NSError   *)error
         Store.current.lockRules(controller);
     
     return NO;
+}
+
+-(void)paymentQueue:(nonnull                  SKPaymentQueue *)queue
+updatedTransactions:(nonnull NSArray<SKPaymentTransaction *> *)transactions
+{
+    
 }
 
 @end
