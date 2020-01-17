@@ -1,6 +1,6 @@
 //
 //  Store.h
-//  Version 1.7.2
+//  Version 1.7.3
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -132,29 +132,33 @@ typedef void(^PurchaseCompletion)(NSError *error);
 
 @interface StoreItem : NSObject
 
-@property (nonatomic, strong, readonly) NSString       *identifier;
-@property (nonatomic, assign, readonly) StoreItemType   type;
-@property (nonatomic, assign, readonly) StoreItemPeriod period;
+@property (nonatomic, strong, readonly) NSString        *identifier;
+@property (nonatomic, assign, readonly) StoreItemType    type;
+@property (nonatomic, assign, readonly) StoreItemPeriod  period;
 
-@property (nonatomic, strong, readonly) NSString       *title;
-@property (nonatomic, strong, readonly) NSString       *titleWithPrice;
-@property (nonatomic, strong, readonly) NSString       *detail;
+@property (nonatomic, strong, readonly) NSString        *title;
+@property (nonatomic, strong, readonly) NSString        *titleWithPrice;
+@property (nonatomic, strong, readonly) NSString        *detail;
 
-@property (nonatomic, strong, readonly) NSNumber       *priceNumber;
-@property (nonatomic, strong, readonly) NSString       *priceString;
+@property (nonatomic, strong, readonly) NSNumber        *priceNumber;
+@property (nonatomic, strong, readonly) NSString        *priceString;
+
+// Дополнительный расчет, сколько примерно в неделю и в месяц выйдет для юзера эта покупка
+@property (nonatomic, strong, readonly) NSString        *pricePerWeekString;
+@property (nonatomic, strong, readonly) NSString        *pricePerMonthString;
 
 // Совершает покупку, либо восстанавливает
 -(void)purchaseWithCompletion:(PurchaseCompletion)completion;
 
-@property (nonatomic, assign, readonly) BOOL            isPurchased;
+@property (nonatomic, assign, readonly) BOOL             isPurchased;
 
 // После того как одноразовая покупка использована, необходимо делать сброс
 -(void)consumablePurchaseReset;
 
 // Время действия покупки
-@property (nonatomic, strong, readonly) NSDate         *startDate;
-@property (nonatomic, strong, readonly) NSDate         *endDate;
-@property (nonatomic, assign, readonly) BOOL            isTrial;
+@property (nonatomic, strong, readonly) NSDate          *startDate;
+@property (nonatomic, strong, readonly) NSDate          *endDate;
+@property (nonatomic, assign, readonly) BOOL             isTrial;
 
 // Устанавливает тип для Store Item, затем возвращает этот Store Item
 -(StoreItem *)consumable;

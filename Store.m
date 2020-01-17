@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 1.7.2
+//  Version 1.7.3
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -92,22 +92,11 @@
     [numberFormatter stringFromNumber:product.price];
     
     formattedPrice =
-    [formattedPrice
-     stringByReplacingOccurrencesOfString:@" "
-     withString:@""];
+    [self cleanPrice:formattedPrice];
     
-    formattedPrice =
-    [formattedPrice
-     stringByReplacingOccurrencesOfString:@".00"
-     withString:@""];
-    
-    formattedPrice =
-    [formattedPrice
-     stringByReplacingOccurrencesOfString:@",00"
-     withString:@""];
-    
-    _priceString    = formattedPrice;
+    _priceString    = [numberFormatter stringFromNumber:product.price];
     _priceNumber    = product.price;
+    
     _titleWithPrice =
     [NSString
      stringWithFormat:@"%@ %@",
@@ -141,6 +130,45 @@
     
     else if (years > 0)
         _period = StoreItemPeriodYear;
+    
+    if (_period == StoreItemPeriodYear)
+    {
+        _pricePerWeekString  =
+        [self
+         cleanPrice:[numberFormatter
+                     stringFromNumber:@(@(_priceNumber.integerValue / 52).integerValue)]];
+        
+        _pricePerMonthString =
+        [self
+         cleanPrice:[numberFormatter
+                     stringFromNumber:@(@(_priceNumber.integerValue / 12).integerValue)]];
+    }
+    
+    if (_period == StoreItemPeriodMonth)
+        _pricePerWeekString  =
+        [self
+         cleanPrice:[numberFormatter
+                     stringFromNumber:@(@(_priceNumber.integerValue / 4).integerValue)]];
+}
+
+-(NSString *)cleanPrice:(NSString *)price
+{
+    price =
+    [price
+     stringByReplacingOccurrencesOfString:@" "
+     withString:@""];
+    
+    price =
+    [price
+     stringByReplacingOccurrencesOfString:@".00"
+     withString:@""];
+    
+    price =
+    [price
+     stringByReplacingOccurrencesOfString:@",00"
+     withString:@""];
+    
+    return price;
 }
 
 -(BOOL)isPurchased
@@ -619,11 +647,12 @@ updatedTransactions:(NSArray        *)transactions
          name:UIApplicationWillEnterForegroundNotification
          object:nil];
         
-        [NSNotificationCenter.defaultCenter
-         addObserver:self
-         selector:@selector(willEnterForegroundNotification)
-         name:UISceneWillEnterForegroundNotification
-         object:nil];
+        if (@available(iOS 13.0, *))
+            [NSNotificationCenter.defaultCenter
+             addObserver:self
+             selector:@selector(willEnterForegroundNotification)
+             name:UISceneWillEnterForegroundNotification
+             object:nil];
     }
     
     return self;
