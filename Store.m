@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 1.7.3
+//  Version 1.8
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -94,8 +94,14 @@
     formattedPrice =
     [self cleanPrice:formattedPrice];
     
-    _priceString    = [numberFormatter stringFromNumber:product.price];
-    _priceNumber    = product.price;
+    _priceString = [numberFormatter stringFromNumber:product.price];
+    _priceNumber = product.price;
+    
+    _currencyCode =
+    [product.priceLocale objectForKey:NSLocaleCurrencyCode];
+    
+    _currencySymbol =
+    [product.priceLocale objectForKey:NSLocaleCurrencySymbol];
     
     _titleWithPrice =
     [NSString

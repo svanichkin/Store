@@ -1,6 +1,6 @@
 //
 //  Store.h
-//  Version 1.7.3
+//  Version 1.8
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -142,6 +142,9 @@ typedef void(^PurchaseCompletion)(NSError *error);
 
 @property (nonatomic, strong, readonly) NSNumber        *priceNumber;
 @property (nonatomic, strong, readonly) NSString        *priceString;
+
+@property (nonatomic, strong, readonly) NSString        *currencyCode;   // USD
+@property (nonatomic, strong, readonly) NSString        *currencySymbol; // $
 
 // Дополнительный расчет, сколько примерно в неделю и в месяц выйдет для юзера эта покупка
 @property (nonatomic, strong, readonly) NSString        *pricePerWeekString;
