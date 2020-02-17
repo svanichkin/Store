@@ -1,6 +1,6 @@
 //
 //  Store.h
-//  Version 1.8
+//  Version 1.9
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -155,6 +155,9 @@ typedef void(^PurchaseCompletion)(NSError *error);
 
 @property (nonatomic, assign, readonly) BOOL             isPurchased;
 
+@property (nonatomic, strong, readonly) NSString                 *transactionId;
+@property (nonatomic, assign, readonly) SKPaymentTransactionState transactionState;
+
 // После того как одноразовая покупка использована, необходимо делать сброс
 -(void)consumablePurchaseReset;
 
@@ -177,7 +180,7 @@ typedef void(^PurchaseCompletion)(NSError *error);
 
 typedef void(^RestoreCompletion)(NSError *error);
 
-typedef BOOL(^LockRules)(UIViewController *controller);
+typedef BOOL(^LockRules)(UIViewController *controller, NSInteger rule);
 
 @interface Store : NSObject
 
@@ -211,6 +214,8 @@ typedef BOOL(^LockRules)(UIViewController *controller);
 
 // Здесь описываются проверки, при которых требуется например показать определенное окно с покупками. Эти проверки будут выполнены, когда будет вызван метод isLockWithController:
 +(void)setLockRules:(LockRules)lockRules;
-+(BOOL)isLockWithController:(UIViewController *)controller;
++(BOOL)isLockWithController:(UIViewController *)controller; // Конторллер в котором желательно показать окно покупок
++(BOOL)isLockWithController:(UIViewController *)controller  // Если требуется проверка по определенному правилу,
+                       rule:(NSInteger         )rule;       // передаем номер этого правила
 
 @end

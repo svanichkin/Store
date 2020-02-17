@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 1.8
+//  Version 1.9
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -297,6 +297,8 @@ updatedTransactions:(NSArray        *)transactions
             case SKPaymentTransactionStateRestored:
             case SKPaymentTransactionStatePurchased:
             {
+                _transactionState = transaction.transactionState;
+                
                 NSLog (@"[INFO] Store: Update transaction fired [SKPaymentTransactionStatePurchased || restored]");
 
                 [NSUserDefaults.standardUserDefaults
@@ -307,6 +309,8 @@ updatedTransactions:(NSArray        *)transactions
                 
                 _startDate =
                 transaction.transactionDate;
+                
+                _transactionId = transaction.transactionIdentifier;
                 
                 if (_product.subscriptionPeriod)
                 {
@@ -1422,12 +1426,21 @@ didFailWithError:(NSError   *)error
 
 +(BOOL)isLockWithController:(UIViewController *)controller
 {
+    return
+    [Store isLockWithController:controller
+                           rule:0];
+}
+
++(BOOL)isLockWithController:(UIViewController *)controller
+                       rule:(NSInteger         )rule
+{
     if (Store.current.lockRules)
         return
-        Store.current.lockRules(controller);
+        Store.current.lockRules(controller, rule);
     
     return NO;
 }
+
 
 -(void)paymentQueue:(nonnull                  SKPaymentQueue *)queue
 updatedTransactions:(nonnull NSArray<SKPaymentTransaction *> *)transactions
