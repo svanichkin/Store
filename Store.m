@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 1.9
+//  Version 1.9.1
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -1162,8 +1162,8 @@ didFailWithError:(NSError   *)error
         self.purchasedDate =
         [formatter dateFromString:jsonResponse[@"receipt"][@"original_purchase_date"]];
         
-        long long requestDateMs =
-        [jsonResponse[@"receipt"][@"request_date_ms"] longLongValue];
+        NSTimeInterval requestDateMs =
+        [jsonResponse[@"receipt"][@"request_date_ms"] integerValue];
         
         //NSLog(@"jsonRECEIPTResponse:%@", jsonResponse[@"receipt"]);
         
@@ -1235,12 +1235,12 @@ didFailWithError:(NSError   *)error
             
             storeItem.startDate =
             [NSDate
-             dateWithTimeIntervalSinceNow:[reciept[@"purchase_date_ms"] integerValue] / 1000.];
+             dateWithTimeIntervalSince1970:[reciept[@"purchase_date_ms"] integerValue] / 1000.];
             
             if (reciept[@"expires_date_ms"])
                 storeItem.endDate =
                 [NSDate
-                 dateWithTimeIntervalSinceNow:[reciept[@"expires_date_ms"] integerValue] / 1000.];
+                 dateWithTimeIntervalSince1970:[reciept[@"expires_date_ms"] integerValue] / 1000.];
             
             storeItem.isTrial   =
             [reciept[@"is_trial_period"] isEqualToString:@"true"];
