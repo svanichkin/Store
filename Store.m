@@ -1,21 +1,9 @@
 //
 //  Store.m
-//  Version 1.9.1
+//  Version 2.0
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
-//
-//  Licensed under the Apache License, Version 2.0 (the "License");
-//  you may not use this file except in compliance with the License.
-//  You may obtain a copy of the License at
-//
-//  http://www.apache.org/licenses/LICENSE-2.0
-//
-//  Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//  See the License for the specific language governing permissions and
-//  limitations under the License.
 //
 
 #import "Store.h"
@@ -42,6 +30,9 @@
 @property (nonatomic, strong) NSMutableArray <PurchaseCompletion> *purchaseCompletions;
 
 @property (nonatomic, assign) BOOL            isPurchasing;
+
+@property (nonatomic, strong) NSArray <NSDictionary <NSString *, NSDate *> *> *asPurchasedDates;
+@property (nonatomic, strong) NSArray <NSDictionary <NSString *, NSArray <NSString *> *> *> *asPurchasedVersions;
 
 @end
 
@@ -151,22 +142,36 @@
     
     if (_period == StoreItemPeriodYear)
     {
-        _pricePerWeekString  =
-        [self
-         cleanPrice:[numberFormatter
-                     stringFromNumber:@(@(_priceNumber.integerValue / 52).integerValue)]];
+        NSInteger p =
+        @(_priceNumber.integerValue / 52).integerValue;
         
-        _pricePerMonthString =
-        [self
-         cleanPrice:[numberFormatter
-                     stringFromNumber:@(@(_priceNumber.integerValue / 12).integerValue)]];
+        if (p > 0)
+            _pricePerWeekString  =
+            [self
+             cleanPrice:[numberFormatter
+                         stringFromNumber:@(p)]];
+        
+        p =
+        @(_priceNumber.integerValue / 12).integerValue;
+        
+        if (p > 0)
+            _pricePerMonthString =
+            [self
+             cleanPrice:[numberFormatter
+                         stringFromNumber:@(p)]];
     }
     
     if (_period == StoreItemPeriodMonth)
-        _pricePerWeekString  =
-        [self
-         cleanPrice:[numberFormatter
-                     stringFromNumber:@(@(_priceNumber.integerValue / 4).integerValue)]];
+    {
+        NSInteger p =
+        @(_priceNumber.integerValue / 4).integerValue;
+        
+        if (p > 0)
+            _pricePerWeekString  =
+            [self
+             cleanPrice:[numberFormatter
+                         stringFromNumber:@(p)]];
+    }
 }
 
 -(NSString *)cleanPrice:(NSString *)price
@@ -193,8 +198,101 @@
 {
     BOOL purchased = NO;
     
-    if (self.type == StoreItemTypeConsumable ||
-        self.type == StoreItemTypeNonConsumable)
+    if (self.asPurchasedDates.count > 0)
+    {
+        NSDate *purchasedDate =
+        Store.firstInstallDate;
+        
+        NSCalendar *calendar = NSCalendar.currentCalendar;
+        
+        NSDateComponents *purchasedComponents =
+        [calendar
+         components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay)
+         fromDate:purchasedDate];
+        
+        for (NSDictionary <NSString *, NSDate *> *range in self.asPurchasedDates)
+            if (range[@"single"])
+            {
+                NSDateComponents *singleComponents =
+                [calendar
+                 components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay)
+                 fromDate:range[@"single"]];
+                
+                if (singleComponents.year  == purchasedComponents.year  &&
+                    singleComponents.month == purchasedComponents.month &&
+                    singleComponents.day   == purchasedComponents.day)
+                    purchased = YES;
+            }
+            
+            else
+            {
+                NSDateComponents *fromComponents =
+                [calendar
+                 components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay)
+                 fromDate:range[@"from"]];
+                
+                NSDateComponents *toComponents =
+                [calendar
+                 components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay)
+                 fromDate:range[@"to"]];
+                    
+                if (fromComponents.year  <= purchasedComponents.year  &&
+                    fromComponents.month <= purchasedComponents.month &&
+                    fromComponents.day   <= purchasedComponents.day   &&
+                    toComponents.year    >= purchasedComponents.year  &&
+                    toComponents.month   >= purchasedComponents.month &&
+                    toComponents.day     >= purchasedComponents.day)
+                    purchased = YES;
+            }
+    }
+    
+    else if (self.asPurchasedVersions > 0)
+    {
+        NSArray <NSString *> *purchasedVersion =
+        [Store.firstInstallAppVersion
+         componentsSeparatedByString:@"."];
+        
+        for (NSDictionary <NSString *, NSArray <NSString *> *> *range in self.asPurchasedVersions)
+            if (range[@"single"])
+            {
+                if (range[@"single"].count != purchasedVersion.count)
+                    continue;
+                
+                if ([[range[@"single"]
+                      componentsJoinedByString:@"."]
+                     isEqualToString:[purchasedVersion
+                                      componentsJoinedByString:@"."]])
+                    purchased = YES;
+            }
+        
+            else
+            {
+                BOOL from = NO;
+                BOOL to   = NO;
+                
+                NSInteger maxCount =
+                MAX(purchasedVersion.count, range[@"from"].count);
+                
+                for (int i = 0; i < maxCount; i ++)
+                    if (i < range[@"from"].count   ? range[@"from"][i].intValue   : 0 <=
+                        i < purchasedVersion.count ? purchasedVersion[i].intValue : 0)
+                        from = YES;
+                
+                maxCount =
+                MAX(purchasedVersion.count, range[@"to"].count);
+                
+                for (int i = 0; i < maxCount; i ++)
+                    if (i < range[@"to"].count     ? range[@"to"][i].intValue     : 0 >=
+                        i < purchasedVersion.count ? purchasedVersion[i].intValue : 0)
+                        to = YES;
+                
+                if (from && to)
+                    purchased = YES;
+            }
+    }
+    
+    else if (self.type == StoreItemTypeConsumable ||
+             self.type == StoreItemTypeNonConsumable)
         purchased =
         [NSUserDefaults.standardUserDefaults
          objectForKey:_identifier] != nil;
@@ -212,6 +310,161 @@
     return purchased;
 }
 
+//   определенная дата: @"12/31/2020"
+//        диапазон дат: @"1/1/2020-12/31/2020"
+// определенная версия: @"3.0.1"
+//     диапазон версий: @"1.0-3.0.1"
+-(void)setAsPurchasedForRanges:(NSArray <NSString *> *)ranges
+{
+    _asPurchasedDates    = @[];
+    _asPurchasedVersions = @[];
+    
+    if (ranges == nil)
+        return;
+    
+    for (NSString *range in ranges)
+    {
+        NSCharacterSet *charactersToRemove =
+        [[NSCharacterSet
+         characterSetWithCharactersInString:@"0123456789./-"]
+         invertedSet];
+        
+        NSString *cleanRange =
+        [[range
+          componentsSeparatedByCharactersInSet:charactersToRemove]
+         componentsJoinedByString:@""];
+        
+        if (cleanRange.length < 3)
+            continue;
+        
+        NSArray <NSString *> *period =
+        [cleanRange
+         componentsSeparatedByString:@"-"];
+        
+        if (period.count > 2)
+            [NSException
+             raise:@"Store"
+             format:@"Wrong range: %@", range];
+        
+        NSString *from =
+        period.firstObject;
+        
+        NSString *to =
+        period.lastObject;
+        
+        if (([from
+              containsString:@"/"] &&
+             [from
+              containsString:@"."]) ||
+            ([to
+              containsString:@"/"] &&
+             [to
+              containsString:@"."]))
+            [NSException
+             raise:@"Store"
+             format:@"Wrong range: %@", range];
+
+        NSDate *fromDate;
+        NSDate *toDate;
+        
+        NSDateFormatter *dateFormater =
+        NSDateFormatter.new;
+        
+        dateFormater.dateFormat = @"dd/MM/yyyy";
+        
+        dateFormater.timeZone =
+        [NSTimeZone
+         timeZoneWithName:@"UTC"];
+        
+        if ([from
+             containsString:@"/"])
+            fromDate =
+            [dateFormater
+             dateFromString:from];
+        
+        if ([to
+             containsString:@"/"])
+            toDate =
+            [dateFormater
+             dateFromString:to];
+
+        NSArray <NSString *> *fromVersion;
+        NSArray <NSString *> *toVersion;
+        
+        if ([from
+             containsString:@"."])
+            fromVersion =
+            [from
+             componentsSeparatedByString:@"."];
+        
+        if ([to
+             containsString:@"."])
+            toVersion =
+            [to
+             componentsSeparatedByString:@"."];
+
+        NSMutableArray <NSDictionary <NSString *, NSDate *> *> *dates =
+        _asPurchasedDates.mutableCopy;
+        
+        NSMutableArray <NSDictionary <NSString *, NSArray <NSString *> *> *> *versions =
+        _asPurchasedVersions.mutableCopy;
+        
+        if (period.count == 1)
+        {
+            if (fromDate)
+            {
+                [dates
+                 addObject:@{@"single":fromDate}];
+                
+                _asPurchasedDates =
+                dates.copy;
+            }
+            
+            else if (fromVersion)
+            {
+                [versions
+                 addObject:@{@"single":fromVersion}];
+                
+                _asPurchasedVersions =
+                versions.copy;
+            }
+            
+            else
+                [NSException
+                 raise:@"Store"
+                 format:@"Wrong range: %@", range];
+        }
+                
+        else if (period.count == 2)
+        {
+            if (fromDate && toDate)
+            {
+                [dates
+                 addObject:@{@"from":fromDate,
+                               @"to":toDate}];
+                
+                _asPurchasedDates =
+                dates.copy;
+            }
+            
+            else if (fromVersion && toVersion)
+            {
+                [versions
+                 addObject:@{@"from":fromVersion,
+                               @"to":toVersion}];
+                
+                _asPurchasedVersions =
+                versions.copy;
+            }
+            
+            else
+                [NSException
+                 raise:@"Store"
+                 format:@"Wrong range: %@", range];
+        }
+    }
+}
+
 #pragma mark - Purchase Product
 
 -(void)purchaseWithCompletion:(PurchaseCompletion)completion
@@ -221,11 +474,21 @@
     
     if (!self.product || !Store.isReady)
     {
-        NSLog(@"[ERROR] Store: Purchase with identifier '%@' failed. Store is not Ready, or product for this identifier not found!",
-              _identifier);
+        NSString *errorMessage =
+        [NSString stringWithFormat:@"[ERROR] Store: Purchase with identifier '%@' failed. Store is not Ready, or product for this identifier not found!",
+              _identifier];
+        
+        NSLog(@"%@",
+              errorMessage);
+        
+        NSError *error =
+        [NSError
+         errorWithDomain:@"Store"
+         code:-1
+         userInfo:@{NSLocalizedDescriptionKey:errorMessage}];
         
         if (completion)
-            completion(nil);
+            completion(error);
         
         return;
     }
@@ -245,7 +508,8 @@
     
     payment.quantity = 1;
     
-    [self.purchaseQueue addPayment:payment];
+    [self.purchaseQueue
+     addPayment:payment];
 }
 
 -(void)consumablePurchaseReset
@@ -455,6 +719,23 @@ updatedTransactions:(NSArray        *)transactions
 
 #pragma mark - Store Manager
 
+#define STORE_SHAREDSECRET  @"StoreSharedSecred"
+#define STORE_iTEMS         @"StoreItems"
+#define STORE_UPDATE        @"StoreUpdate"
+
+#define CONFiG_SHAREDSECRET @"sharedSecred"
+#define CONFiG_iDENTiFiERS  @"identifiers"
+#define CONFiG_iDENTiFiER   @"identifier"
+#define CONFiG_TYPE         @"type"
+#define CONFiG_AS_RANGE     @"asPurchasedForRanges"
+
+#define TYPE_CONSUMABLE     @"consumable"
+#define TYPE_NCONSUMABLE    @"nonConsumable"
+#define TYPE_NR_WEEK        @"nonRenewingSubscriptionWeek"
+#define TYPE_NR_MONTH       @"nonRenewingSubscriptionMonth"
+#define TYPE_NR_YEAR        @"nonRenewingSubscriptionYear"
+#define TYPE_RENEWABLE      @"autoRenewableSubscription"
+
 @interface Store () <SKProductsRequestDelegate, SKRequestDelegate, SKPaymentTransactionObserver>
 
 @property (nonatomic, strong) NSString              *sharedSecret;
@@ -480,6 +761,10 @@ updatedTransactions:(NSArray        *)transactions
 
 @property (nonatomic, strong) LockRules lockRules;
 
+@property (nonatomic, strong) NSURL *url;
+
+@property (nonatomic, assign) BOOL isSetupProgress;
+
 @end
 
 @implementation Store
@@ -495,6 +780,255 @@ updatedTransactions:(NSArray        *)transactions
     });
     
     return _current;
+}
+
++(void)setupWithURLString:(NSString        *)urlString
+               completion:(RestoreCompletion)completion;
+{
+    if (Store.current.isSetupProgress)
+    {
+        if (completion)
+            completion(nil);
+        
+        return;
+    }
+    
+    Store.current.isSetupProgress = YES;
+    
+    NSURL *url =
+    [NSURL
+     URLWithString:urlString];
+    
+    if (url == nil)
+        [NSException
+         raise:@"Feedback"
+         format:@"Url string is not valid: %@",
+         urlString];
+    
+    Store.current.url = url;
+    
+    if (!Store.isReady)
+    {
+        Store.current.sharedSecret =
+        [NSUserDefaults.standardUserDefaults
+         objectForKey:STORE_SHAREDSECRET];
+        
+        Store.current.storeItems   =
+        [self
+         storeItemsWithArray:[NSUserDefaults.standardUserDefaults
+                              objectForKey:STORE_iTEMS]];
+    }
+    
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(void)
+    {
+        NSDate *fileDate =
+        [self
+         lastModificationDateOfFileAtURL:url];
+
+        NSDate *updateDate =
+        [NSUserDefaults.standardUserDefaults
+         objectForKey:STORE_UPDATE];
+
+        if (updateDate && fileDate)
+            if (!([fileDate
+                   compare:updateDate] == NSOrderedDescending))
+            {
+                dispatch_async(dispatch_get_main_queue(), ^(void)
+                {
+                    [Store.current
+                     restoreProductsCompletion:^(NSError *error)
+                    {
+                        Store.current.isSetupProgress = NO;
+                        
+                        if (completion)
+                            completion(error);
+                    }];
+                });
+                
+                return;
+            }
+
+        NSData *jsonData =
+        [NSData
+         dataWithContentsOfURL:url];
+
+        NSDictionary *jsonObject =
+        [NSJSONSerialization
+         JSONObjectWithData:jsonData
+         options:0
+         error:nil];
+
+        if (!jsonObject)
+        {
+            dispatch_async(dispatch_get_main_queue(), ^(void)
+            {
+                [Store.current
+                 restoreProductsCompletion:^(NSError *error)
+                 {
+                    Store.current.isSetupProgress = NO;
+                    
+                    if (completion)
+                        completion(error);
+                }];
+            });
+            
+            return;
+        }
+        
+        dispatch_async(dispatch_get_main_queue(), ^(void)
+        {
+            if (jsonObject[CONFiG_SHAREDSECRET] && jsonObject[CONFiG_iDENTiFiERS])
+            {
+                Store.current.sharedSecret =
+                jsonObject[CONFiG_SHAREDSECRET];
+                
+                [NSUserDefaults.standardUserDefaults
+                 setObject:jsonObject[CONFiG_SHAREDSECRET]
+                 forKey:STORE_SHAREDSECRET];
+
+                Store.current.storeItems =
+                [self
+                 storeItemsWithArray:jsonObject[CONFiG_iDENTiFiERS]];
+                
+                [NSUserDefaults.standardUserDefaults
+                 setObject:jsonObject[CONFiG_iDENTiFiERS]
+                 forKey:STORE_iTEMS];
+                
+                [NSUserDefaults.standardUserDefaults
+                 setObject:fileDate
+                 forKey:STORE_UPDATE];
+                
+                [Store.current
+                 restoreProductsCompletion:^(NSError *error)
+                {
+                    Store.current.isSetupProgress = NO;
+                    
+                    if (completion)
+                        completion(error);
+                }];
+            }
+            
+            else
+            {
+                Store.current.isSetupProgress = NO;
+                
+                if (completion)
+                    completion([NSError
+                                errorWithDomain:@"Store"
+                                code:-1
+                                userInfo:@{NSLocalizedDescriptionKey:@"Invalid Store Config"}]);
+            }
+        });
+    });
+}
+
++(NSArray <StoreItem *> *)storeItemsWithArray:(NSArray <NSDictionary <NSString *, NSString *> *> *)array
+{
+    NSMutableArray *items =
+    NSMutableArray.new;
+    
+    for (NSDictionary <NSString *, NSString *> *dictionary in array)
+    {
+        StoreItem *storeItem =
+        StoreItem.new;
+        
+        storeItem.identifier =
+        dictionary[CONFiG_iDENTiFiER];
+        
+        if ([dictionary[CONFiG_TYPE]
+             isEqualToString:TYPE_CONSUMABLE])
+            storeItem.type =
+            StoreItemTypeConsumable;
+
+        else if ([dictionary[CONFiG_TYPE]
+                  isEqualToString:TYPE_NCONSUMABLE])
+            storeItem.type =
+            StoreItemTypeNonConsumable;
+        
+        else if ([dictionary[CONFiG_TYPE]
+                  isEqualToString:TYPE_RENEWABLE])
+            storeItem.type =
+            StoreItemTypeAutoRenewableSubscription;
+        
+        else
+        {
+            storeItem.type =
+            StoreItemTypeNonRenewingSubscription;
+            
+            if ([dictionary[CONFiG_TYPE]
+                 isEqualToString:TYPE_NR_WEEK])
+                storeItem.period =
+                StoreItemPeriodWeek;
+            
+            else if ([dictionary[CONFiG_TYPE]
+                      isEqualToString:TYPE_NR_MONTH])
+                storeItem.period =
+                StoreItemPeriodMonth;
+            
+            else if ([dictionary[CONFiG_TYPE]
+                      isEqualToString:TYPE_NR_YEAR])
+                storeItem.period =
+                StoreItemPeriodYear;
+        }
+        
+        if (dictionary[CONFiG_AS_RANGE])
+            [storeItem
+             setAsPurchasedForRanges:(NSArray *)dictionary[CONFiG_AS_RANGE]];
+        
+        [items
+         addObject:storeItem];
+    }
+    
+    return
+    items.copy;
+}
+
++(NSDate *)lastModificationDateOfFileAtURL:(NSURL *)url
+{
+    NSMutableURLRequest *request =
+    [NSMutableURLRequest.alloc
+     initWithURL:url];
+    
+    request.HTTPMethod = @"HEAD";
+    
+    NSHTTPURLResponse *response = nil;
+    NSError *error = nil;
+    
+    [NSURLConnection
+     sendSynchronousRequest:request
+     returningResponse:&response
+     error:&error];
+    
+    if (error)
+    {
+        NSLog(@"Error: %@",
+              error.localizedDescription);
+        
+        return
+        nil;
+    }
+    
+    else if([response
+             respondsToSelector:@selector(allHeaderFields)])
+    {
+        NSDictionary *headerFields =
+        response.allHeaderFields;
+        
+        NSString *lastModification =
+        headerFields[@"Last-Modified"];
+        
+        NSDateFormatter *formatter =
+        NSDateFormatter.new;
+        
+        formatter.dateFormat =
+        @"EEE, dd MMM yyyy HH:mm:ss zzz";
+        
+        return
+        [formatter
+         dateFromString:lastModification];
+    }
+    
+    return nil;
 }
 
 +(void)setupWithSharedSecret:(NSString              *)sharedSecret
@@ -691,7 +1225,14 @@ updatedTransactions:(NSArray        *)transactions
 {
     NSLog(@"[INFO] Store: Application will enter foreground");
     
-    [self restoreProductsCompletion:nil];
+    if (self.url)
+        [Store
+         setupWithURLString:self.url.absoluteString
+         completion:nil];
+    
+    else
+        [self
+         restoreProductsCompletion:nil];
 }
 
 -(void)returnCompletionsWithError:(NSError *)error
@@ -718,7 +1259,8 @@ updatedTransactions:(NSArray        *)transactions
     {
         NSLog(@"[ERROR] Store: Loading products failed. Store setup is not completed, shared secret or idientifiers is empty!");
         
-        completion(nil);
+        if (completion)
+            completion(nil);
         
         return;
     }
@@ -752,15 +1294,8 @@ updatedTransactions:(NSArray        *)transactions
                     [searched addObject:identifier];
         
         if (searched.count == self.storeItems.count)
-        {
-//            NSLog (@"[INFO] Store: Try restoring transactions...");
-            
+            return
             [self refreshReceipt];
-//            [self.restoreQueue
-//             restoreCompletedTransactions];
-            
-            return;
-        }
         
         self.products = nil;
     }
@@ -780,26 +1315,8 @@ updatedTransactions:(NSArray        *)transactions
     NSLog (@"[INFO] Store: Product list loading finished");
     
     if (response.invalidProductIdentifiers.count)
-    {
         NSLog (@"[ERROR] Store: Ignore invalid identifiers: %@",
                response.invalidProductIdentifiers);
-        
-//        NSString *errorMessage =
-//        [NSString stringWithFormat:@"[ERROR] Store: Invalid identifiers: %@",
-//         response.invalidProductIdentifiers];
-        
-//        NSLog (@"%@", errorMessage);
-//        dispatch_async(dispatch_get_main_queue(), ^(void)
-//        {
-//            [self
-//             returnCompletionsWithError:[NSError
-//                                         errorWithDomain:@"Store"
-//                                         code:-1
-//                                         userInfo:@{NSLocalizedDescriptionKey:errorMessage}]];
-//        });
-//
-//        return;
-    }
     
     self.products =
     response.products;
@@ -809,57 +1326,8 @@ updatedTransactions:(NSArray        *)transactions
             if ([s.identifier isEqualToString:product.productIdentifier])
                 s.product = product;
     
-//    NSLog (@"[INFO] Store: Try restoring transactions...");
-    
     [self refreshReceipt];
-//    [self.restoreQueue restoreCompletedTransactions];
 }
-
-//-(void)paymentQueueRestoreCompletedTransactionsFinished:(SKPaymentQueue *)queue
-//{
-//    NSLog (@"[INFO] Store: Restoring transactions finished");
-//
-//    NSMutableArray <NSString *> *productIdentifiers =
-//    NSMutableArray.new;
-//
-//    for (StoreItem *s in self.storeItems)
-//        [productIdentifiers addObject:s.identifier];
-//
-//    NSLog(@"[INFO] Store: Count of transactions: %lu", (unsigned long)queue.transactions.count);
-//
-//    self.idsForCheck = NSMutableArray.new;
-//
-//    for (SKPaymentTransaction *transaction in queue.transactions)
-//    {
-//        if (transaction.transactionState == SKPaymentTransactionStateRestored)
-//            if (![self.idsForCheck containsObject:transaction.payment.productIdentifier])
-//                [self.idsForCheck addObject:transaction.payment.productIdentifier];
-//
-//        [queue finishTransaction:transaction];
-//    }
-//
-//    NSLog(@"[INFO] Store: Ids for check: %@", self.idsForCheck);
-//
-//    // Если у нас есть подписки nonReniwing то их в списке восстанавленных
-//    // транзакций не будет (но они будут в чеке, поэтому эти айдишки так же надо добавить)
-//    NSArray *nonRenewing =
-//    [Store storeItemsWithType:StoreItemTypeNonRenewingSubscription];
-//
-//    if (nonRenewing.count)
-//        for (StoreItem *storeItem in nonRenewing)
-//            [self.idsForCheck addObject:storeItem.identifier];
-//
-//    NSArray *nonConsumable =
-//    [Store storeItemsWithType:StoreItemTypeNonConsumable];
-//
-//    if (nonConsumable.count)
-//        for (StoreItem *storeItem in nonConsumable)
-//            [self.idsForCheck addObject:storeItem.identifier];
-//
-//    NSLog(@"[INFO] Store: Сформирована структура для проверки чека: %@", self.idsForCheck);
-//
-//    [self refreshReceipt];
-//}
 
 -(void)refreshReceipt
 {
@@ -948,6 +1416,11 @@ didFailWithError:(NSError   *)error
     #else
     BOOL sandbox =
     Store.current.isSandbox = NO;
+    
+    if ([NSBundle.mainBundle.appStoreReceiptURL.absoluteString.lowercaseString
+         containsString:@"sandbox"])
+        sandbox =
+        Store.current.isSandbox = YES;
     #endif
     
     NSLog(@"[INFO] Store: Receipt setup (sandbox = %@)",
@@ -1153,7 +1626,8 @@ didFailWithError:(NSError   *)error
                 NSLog(@"[ERROR] Store: %@",
                       receiptError.localizedDescription);
                 
-                [self returnCompletionsWithError:receiptError];
+                [self
+                 returnCompletionsWithError:receiptError];
                 
                 [NSException
                  raise:@"Store"
@@ -1172,10 +1646,12 @@ didFailWithError:(NSError   *)error
         formatter.dateFormat = @"yyyy-MM-dd HH:mm:ss VV";
         
         self.purchasedDate =
-        [formatter dateFromString:jsonResponse[@"receipt"][@"original_purchase_date"]];
+        [formatter
+         dateFromString:jsonResponse[@"receipt"][@"original_purchase_date"]];
         
         NSTimeInterval requestDateMs =
-        [jsonResponse[@"receipt"][@"request_date_ms"] integerValue];
+        [jsonResponse[@"receipt"][@"request_date_ms"]
+         integerValue];
         
         //NSLog(@"jsonRECEIPTResponse:%@", jsonResponse[@"receipt"]);
         
