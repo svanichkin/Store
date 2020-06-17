@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 2.0
+//  Version 2.1
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -657,6 +657,46 @@ updatedTransactions:(NSArray        *)transactions
 }
 
 #pragma mark - Store Item Helpers
+
+-(NSString *)startDateStringWithFormat:(NSString *)stringFormat
+{
+    NSDateFormatter *dateFormater =
+    NSDateFormatter.new;
+    
+    dateFormater.timeZone         =
+    [NSTimeZone
+     timeZoneWithAbbreviation:@"UTC"];
+    
+    dateFormater.dateFormat       =
+    stringFormat;
+    
+    dateFormater.locale           =
+    NSLocale.currentLocale;
+    
+    return
+    [dateFormater
+     stringFromDate:self.startDate];
+}
+
+-(NSString *)endDateStringWithFormat:(NSString *)stringFormat
+{
+    NSDateFormatter *dateFormater =
+    NSDateFormatter.new;
+    
+    dateFormater.timeZone         =
+    [NSTimeZone
+     timeZoneWithAbbreviation:@"UTC"];
+    
+    dateFormater.dateFormat       =
+    stringFormat;
+    
+    dateFormater.locale           =
+    NSLocale.currentLocale;
+    
+    return
+    [dateFormater
+     stringFromDate:self.endDate];
+}
 
 -(StoreItem *)consumable
 {

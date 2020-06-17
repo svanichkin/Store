@@ -1,6 +1,6 @@
 //
 //  Store.h
-//  Version 2.0
+//  Version 2.1
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -311,6 +311,9 @@ typedef void(^PurchaseCompletion)(NSError *error);
 @property (nonatomic, strong, readonly) NSDate          *startDate;
 @property (nonatomic, strong, readonly) NSDate          *endDate;
 @property (nonatomic, assign, readonly) BOOL             isTrial;
+
+-(NSString *)startDateStringWithFormat:(NSString *)stringFormat; // например dd MMMM yyyy
+-(NSString *)endDateStringWithFormat:(NSString *)stringFormat; // например dd MMMM yyyy
 
 // Устанавливает тип для Store Item, затем возвращает этот Store Item
 -(StoreItem *)consumable;
