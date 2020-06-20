@@ -112,8 +112,7 @@
      formattedPrice,
      product.localizedTitle];
     
-    _title  = product.localizedTitle;
-    _detail = product.localizedDescription;
+    _title = product.localizedTitle;
     
     NSInteger days   = 0;
     NSInteger months = 0;
@@ -174,6 +173,36 @@
     }
 }
 
+-(NSString *)detail
+{
+    if (self.isPurchased == NO ||
+        self.startDate   == nil)
+        return
+        _product.localizedDescription;
+    
+    NSString *dateString;
+    
+    if (self.startDate && self.endDate)
+        dateString =
+        [NSString
+         stringWithFormat:@"%@—%@",
+         [self
+          startDateStringWithFormat:@"dd.MM.yyyy"],
+         [self
+          endDateStringWithFormat:@"dd.MM.yyyy"]];
+    
+    else
+        dateString =
+        [self
+         startDateStringWithFormat:@"dd.MM.yyyy"];
+
+    return
+    [NSString
+     stringWithFormat:@"%@ %@",
+     _product.localizedDescription,
+     dateString];
+}
+
 -(NSString *)cleanPrice:(NSString *)price
 {
     price =
@@ -198,17 +227,14 @@
 {
     BOOL purchased = NO;
     
-    if (self.asPurchasedDates.count > 0)
+    if (self.asPurchasedDates.count > 0 && Store.firstInstallDate)
     {
-        NSDate *purchasedDate =
-        Store.firstInstallDate;
-        
         NSCalendar *calendar = NSCalendar.currentCalendar;
         
         NSDateComponents *purchasedComponents =
         [calendar
          components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay)
-         fromDate:purchasedDate];
+         fromDate:Store.firstInstallDate];
         
         for (NSDictionary <NSString *, NSDate *> *range in self.asPurchasedDates)
             if (range[@"single"])
@@ -221,32 +247,23 @@
                 if (singleComponents.year  == purchasedComponents.year  &&
                     singleComponents.month == purchasedComponents.month &&
                     singleComponents.day   == purchasedComponents.day)
+                {
+                    _startDate = Store.firstInstallDate;
+                    
                     purchased = YES;
+                }
             }
             
-            else
+            else if (range[@"from"].timeIntervalSince1970 <= Store.firstInstallDate.timeIntervalSince1970 &&
+                     range[@"to"].timeIntervalSince1970 >= Store.firstInstallDate.timeIntervalSince1970)
             {
-                NSDateComponents *fromComponents =
-                [calendar
-                 components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay)
-                 fromDate:range[@"from"]];
+                _startDate = Store.firstInstallDate;
                 
-                NSDateComponents *toComponents =
-                [calendar
-                 components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay)
-                 fromDate:range[@"to"]];
-                    
-                if (fromComponents.year  <= purchasedComponents.year  &&
-                    fromComponents.month <= purchasedComponents.month &&
-                    fromComponents.day   <= purchasedComponents.day   &&
-                    toComponents.year    >= purchasedComponents.year  &&
-                    toComponents.month   >= purchasedComponents.month &&
-                    toComponents.day     >= purchasedComponents.day)
-                    purchased = YES;
+                purchased = YES;
             }
     }
     
-    else if (self.asPurchasedVersions > 0)
+    else if (self.asPurchasedVersions > 0 && Store.firstInstallAppVersion)
     {
         NSArray <NSString *> *purchasedVersion =
         [Store.firstInstallAppVersion
@@ -262,7 +279,11 @@
                       componentsJoinedByString:@"."]
                      isEqualToString:[purchasedVersion
                                       componentsJoinedByString:@"."]])
+                {
+                    _startDate = Store.firstInstallDate;
+                    
                     purchased = YES;
+                }
             }
         
             else
@@ -287,7 +308,11 @@
                         to = YES;
                 
                 if (from && to)
+                {
+                    _startDate = Store.firstInstallDate;
+                    
                     purchased = YES;
+                }
             }
     }
     
@@ -660,6 +685,9 @@ updatedTransactions:(NSArray        *)transactions
 
 -(NSString *)startDateStringWithFormat:(NSString *)stringFormat
 {
+    if (!self.startDate)
+        return nil;
+    
     NSDateFormatter *dateFormater =
     NSDateFormatter.new;
     
@@ -680,6 +708,9 @@ updatedTransactions:(NSArray        *)transactions
 
 -(NSString *)endDateStringWithFormat:(NSString *)stringFormat
 {
+    if (!self.endDate)
+        return nil;
+    
     NSDateFormatter *dateFormater =
     NSDateFormatter.new;
     
@@ -847,6 +878,9 @@ updatedTransactions:(NSArray        *)transactions
     
     Store.current.url = url;
     
+    [NSUserDefaults.standardUserDefaults
+     synchronize];
+     
     if (!Store.isReady)
     {
         Store.current.sharedSecret =
@@ -954,6 +988,9 @@ updatedTransactions:(NSArray        *)transactions
                 [NSUserDefaults.standardUserDefaults
                  setObject:fileDate
                  forKey:STORE_UPDATE];
+                
+                [NSUserDefaults.standardUserDefaults
+                 synchronize];
                 
                 [Store.current
                  restoreProductsCompletion:^(NSError *error)

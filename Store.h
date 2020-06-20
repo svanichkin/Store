@@ -312,9 +312,6 @@ typedef void(^PurchaseCompletion)(NSError *error);
 @property (nonatomic, strong, readonly) NSDate          *endDate;
 @property (nonatomic, assign, readonly) BOOL             isTrial;
 
--(NSString *)startDateStringWithFormat:(NSString *)stringFormat; // например dd MMMM yyyy
--(NSString *)endDateStringWithFormat:(NSString *)stringFormat; // например dd MMMM yyyy
-
 // Устанавливает тип для Store Item, затем возвращает этот Store Item
 -(StoreItem *)consumable;
 -(StoreItem *)nonConsumable;
