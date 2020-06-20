@@ -658,46 +658,6 @@ updatedTransactions:(NSArray        *)transactions
 
 #pragma mark - Store Item Helpers
 
--(NSString *)startDateStringWithFormat:(NSString *)stringFormat
-{
-    NSDateFormatter *dateFormater =
-    NSDateFormatter.new;
-    
-    dateFormater.timeZone         =
-    [NSTimeZone
-     timeZoneWithAbbreviation:@"UTC"];
-    
-    dateFormater.dateFormat       =
-    stringFormat;
-    
-    dateFormater.locale           =
-    NSLocale.currentLocale;
-    
-    return
-    [dateFormater
-     stringFromDate:self.startDate];
-}
-
--(NSString *)endDateStringWithFormat:(NSString *)stringFormat
-{
-    NSDateFormatter *dateFormater =
-    NSDateFormatter.new;
-    
-    dateFormater.timeZone         =
-    [NSTimeZone
-     timeZoneWithAbbreviation:@"UTC"];
-    
-    dateFormater.dateFormat       =
-    stringFormat;
-    
-    dateFormater.locale           =
-    NSLocale.currentLocale;
-    
-    return
-    [dateFormater
-     stringFromDate:self.endDate];
-}
-
 -(StoreItem *)consumable
 {
     _type =
@@ -891,6 +851,23 @@ updatedTransactions:(NSArray        *)transactions
         NSData *jsonData =
         [NSData
          dataWithContentsOfURL:url];
+        
+        if (!jsonData)
+        {
+            dispatch_async(dispatch_get_main_queue(), ^(void)
+            {
+                [Store.current
+                 restoreProductsCompletion:^(NSError *error)
+                {
+                    Store.current.isSetupProgress = NO;
+                    
+                    if (completion)
+                        completion(error);
+                }];
+            });
+            
+            return;
+        }
 
         NSDictionary *jsonObject =
         [NSJSONSerialization
@@ -904,7 +881,7 @@ updatedTransactions:(NSArray        *)transactions
             {
                 [Store.current
                  restoreProductsCompletion:^(NSError *error)
-                 {
+                {
                     Store.current.isSetupProgress = NO;
                     
                     if (completion)
