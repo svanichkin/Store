@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 2.3
+//  Version 2.3.1
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -79,6 +79,11 @@
 -(void)setPeriod:(StoreItemPeriod)period
 {
     _period = period;
+}
+
+-(void)setIsInvalid:(BOOL)isInvalid
+{
+    _isInvalid = isInvalid;
 }
 
 -(void)setProduct:(SKProduct *)product
@@ -316,8 +321,11 @@
             }
     }
     
-    else if (self.type == StoreItemTypeConsumable ||
-             self.type == StoreItemTypeNonConsumable)
+    else if (self.type == StoreItemTypeConsumable)
+        purchased =
+        self.consumableCount.integerValue > 0;
+    
+    else if (self.type == StoreItemTypeNonConsumable)
         purchased =
         [NSUserDefaults.standardUserDefaults
          objectForKey:_identifier] != nil;
@@ -537,17 +545,99 @@
      addPayment:payment];
 }
 
--(void)consumablePurchaseReset
+-(void)setDefaultConsumableCount:(NSNumber *)defaultConsumableCount
 {
-    NSLog(@"[INFO] Store: Purchaing reset product with identifier '%@'",
-          _identifier);
-          
     [NSUserDefaults.standardUserDefaults
-     setObject:nil
-     forKey:self.identifier];
+     setObject:defaultConsumableCount
+     forKey:[@"defaultConsumableCount:"
+             stringByAppendingString:self.identifier]];
     
-    [NSUserDefaults.standardUserDefaults synchronize];
+    [NSUserDefaults.standardUserDefaults
+     synchronize];
+}
+
+-(NSNumber *)defaultConsumableCount
+{
+    [NSUserDefaults.standardUserDefaults
+     synchronize];
     
+    NSNumber *defaultConsumableCount =
+    [NSUserDefaults.standardUserDefaults
+     objectForKey:[@"defaultConsumableCount:"
+                   stringByAppendingString:self.identifier]];
+    
+    if (defaultConsumableCount == nil)
+        return @1;
+    
+    return
+    defaultConsumableCount;
+}
+
+-(void)setConsumableCount:(NSNumber *)consumableCount
+{
+    if (consumableCount == nil)
+        [NSUserDefaults.standardUserDefaults
+         removeObjectForKey:[@"consumableCount:"
+                             stringByAppendingString:self.identifier]];
+    
+    else
+        [NSUserDefaults.standardUserDefaults
+         setObject:consumableCount
+         forKey:[@"consumableCount:"
+                 stringByAppendingString:self.identifier]];
+    
+    [NSUserDefaults.standardUserDefaults
+     synchronize];
+}
+
+-(NSNumber *)consumableCount
+{
+    [NSUserDefaults.standardUserDefaults
+     synchronize];
+    
+    return
+    [NSUserDefaults.standardUserDefaults
+     objectForKey:[@"consumableCount:"
+                   stringByAppendingString:self.identifier]];
+}
+
+-(void)consumablePurchaseDecrease
+{
+    NSLog(@"[INFO] Store: Purchaing decrease product from:%@ with identifier '%@'",
+          self.consumableCount,
+          _identifier);
+
+    NSNumber *count =
+    self.consumableCount;
+    
+    count =
+    @(count.integerValue - 1);
+    
+    if (count.integerValue <= 0)
+    {
+        self.consumableCount =
+        nil;
+        
+        [NSUserDefaults.standardUserDefaults
+         removeObjectForKey:self.identifier];
+        
+        [NSUserDefaults.standardUserDefaults
+         synchronize];
+        
+        NSLog(@"[INFO] Store: Purchaing product remove with identifier '%@'",
+              _identifier);
+    }
+    
+    else
+    {
+        self.consumableCount =
+        count;
+        
+        NSLog(@"[INFO] Store: Purchaing decreased product to:%@ with identifier '%@'",
+              self.consumableCount,
+              _identifier);
+    }
+            
     [NSNotificationCenter.defaultCenter
      postNotificationName:STORE_MANAGER_CHANGED
      object:nil];
@@ -607,6 +697,10 @@ updatedTransactions:(NSArray        *)transactions
                  forKey:transaction.payment.productIdentifier];
                 
                 [NSUserDefaults.standardUserDefaults synchronize];
+                
+                self.consumableCount =
+                @(self.consumableCount.integerValue +
+                self.defaultConsumableCount.integerValue);
                 
                 _startDate =
                 transaction.transactionDate;
@@ -798,6 +892,7 @@ updatedTransactions:(NSArray        *)transactions
 #define CONFiG_iDENTiFiERS  @"identifiers"
 #define CONFiG_iDENTiFiER   @"identifier"
 #define CONFiG_TYPE         @"type"
+#define CONFiG_COUNT        @"count"
 #define CONFiG_AS_RANGE     @"asPurchasedForRanges"
 
 #define TYPE_CONSUMABLE     @"consumable"
@@ -872,7 +967,7 @@ updatedTransactions:(NSArray        *)transactions
     
     if (url == nil)
         [NSException
-         raise:@"Feedback"
+         raise:@"Store"
          format:@"Url string is not valid: %@",
          urlString];
     
@@ -1031,8 +1126,14 @@ updatedTransactions:(NSArray        *)transactions
         
         if ([dictionary[CONFiG_TYPE]
              isEqualToString:TYPE_CONSUMABLE])
+        {
             storeItem.type =
             StoreItemTypeConsumable;
+            
+            if (dictionary[CONFiG_COUNT])
+                storeItem.defaultConsumableCount =
+                @(dictionary[CONFiG_COUNT].integerValue);
+        }
 
         else if ([dictionary[CONFiG_TYPE]
                   isEqualToString:TYPE_NCONSUMABLE])
@@ -1174,7 +1275,7 @@ updatedTransactions:(NSArray        *)transactions
     Store.current.isSandbox;
 }
 
-+(NSArray<StoreItem *> *)storeItems
++(NSArray<StoreItem *> *)storeItemsAll
 {
     NSSortDescriptor *sortDescriptorType =
     [NSSortDescriptor.alloc
@@ -1191,15 +1292,8 @@ updatedTransactions:(NSArray        *)transactions
      sortedArrayUsingDescriptors:@[sortDescriptorType, sortDescriptorPrice]];
 }
 
-+(NSArray<StoreItem *> *)storeItemsPurchased
++(NSArray<StoreItem *> *)storeItems
 {
-    NSMutableArray *storeItems =
-    NSMutableArray.new;
-    
-    for (StoreItem *storeItem in Store.current.storeItems)
-        if (storeItem.isPurchased == YES)
-            [storeItems addObject:storeItem];
-    
     NSSortDescriptor *sortDescriptorType =
     [NSSortDescriptor.alloc
      initWithKey:@"type"
@@ -1210,9 +1304,35 @@ updatedTransactions:(NSArray        *)transactions
      initWithKey:@"priceNumber"
      ascending:YES];
     
+    NSArray *items =
+    [Store.current.storeItems
+     sortedArrayUsingDescriptors:@[sortDescriptorType,
+                                   sortDescriptorPrice]];
+    
+    NSMutableArray *mItems =
+    items.mutableCopy;
+    
+    for (StoreItem *item in items)
+        if (item.isInvalid)
+            [mItems
+             removeObject:item];
+        
     return
-    [storeItems
-     sortedArrayUsingDescriptors:@[sortDescriptorType, sortDescriptorPrice]];
+    mItems.copy;
+}
+
++(NSArray<StoreItem *> *)storeItemsPurchased
+{
+    NSMutableArray *storeItems =
+    NSMutableArray.new;
+    
+    for (StoreItem *storeItem in self.storeItems)
+        if (storeItem.isPurchased == YES)
+            [storeItems
+             addObject:storeItem];
+        
+    return
+    storeItems.copy;
 }
 
 +(NSArray <StoreItem *> *)storeItemsWithType:(StoreItemType)type
@@ -1223,7 +1343,8 @@ updatedTransactions:(NSArray        *)transactions
     for (StoreItem *storeItem in Store.current.storeItems)
         if (storeItem.type == type &&
             storeItem.title.length)
-            [storeItems addObject:storeItem];
+            [storeItems
+             addObject:storeItem];
     
     NSSortDescriptor *sortDescriptor =
     [NSSortDescriptor.alloc
@@ -1243,7 +1364,8 @@ updatedTransactions:(NSArray        *)transactions
     for (StoreItem *storeItem in Store.current.storeItems)
         if (storeItem.type        == type &&
             storeItem.isPurchased == YES)
-            [storeItems addObject:storeItem];
+            [storeItems
+             addObject:storeItem];
     
     NSSortDescriptor *sortDescriptor =
     [NSSortDescriptor.alloc
@@ -1409,18 +1531,29 @@ updatedTransactions:(NSArray        *)transactions
     NSLog (@"[INFO] Store: Product list loading finished");
     
     if (response.invalidProductIdentifiers.count)
+    {
         NSLog (@"[ERROR] Store: Ignore invalid identifiers: %@",
                response.invalidProductIdentifiers);
-    
+        
+        for (NSString *invalidProductIdentifier in response.invalidProductIdentifiers)
+            for (StoreItem *s in self.storeItems)
+                if ([s.identifier
+                     isEqualToString:invalidProductIdentifier])
+                    s.isInvalid =
+                    YES;
+    }
+
     self.products =
     response.products;
     
     for (SKProduct *product in self.products)
         for (StoreItem *s in self.storeItems)
-            if ([s.identifier isEqualToString:product.productIdentifier])
+            if ([s.identifier
+                 isEqualToString:product.productIdentifier])
                 s.product = product;
     
-    [self refreshReceipt];
+    [self
+     refreshReceipt];
 }
 
 -(void)refreshReceipt

@@ -1,6 +1,6 @@
 //
 //  Store.h
-//  Version 2.3
+//  Version 2.3.1
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -292,13 +292,23 @@ typedef void(^PurchaseCompletion)(NSError *error);
 // Совершает покупку, либо восстанавливает
 -(void)purchaseWithCompletion:(PurchaseCompletion)completion;
 
+// Есть ли на сервере покупка с данным айдишником
+@property (nonatomic, assign, readonly) BOOL             isInvalid;
+
 @property (nonatomic, assign, readonly) BOOL             isPurchased;
 
 @property (nonatomic, strong, readonly) NSString                 *transactionId;
 @property (nonatomic, assign, readonly) SKPaymentTransactionState transactionState;
 
-// После того как одноразовая покупка использована, необходимо делать сброс
--(void)consumablePurchaseReset;
+// Устанавливает значение количества единиц которые будут
+// инкрементированы после приобретения данной одноразовой покупки (например +100 монет)
+@property (nonatomic, strong) NSNumber *defaultConsumableCount;
+
+// Количество оставшихся единиц в одноразовой покупке (например 83 монеты)
+@property (nonatomic, strong, readonly) NSNumber *consumableCount;
+
+// После того как одноразовая покупка использована, необходимо делать сброс (например -1 монета)
+-(void)consumablePurchaseDecrease;
 
 // Делает покупку приобретенной, на определенный период или несколько приодов
 -(void)setAsPurchasedForRanges:(NSArray <NSString *> *)ranges;
@@ -349,7 +359,8 @@ typedef BOOL(^LockRules)(UIViewController *controller, NSInteger rule);
 +(BOOL)isSandbox;
 
 // Выдает имеющиеся StoreItems, и приобретенные и с определенным типом
-+(NSArray <StoreItem *> *)storeItems;
++(NSArray <StoreItem *> *)storeItemsAll; // Включающие в себя покупки со статусом invalid
++(NSArray <StoreItem *> *)storeItems;    // Только валидные покупки
 +(NSArray <StoreItem *> *)storeItemsPurchased;
 +(NSArray <StoreItem *> *)storeItemsWithType:(StoreItemType)type;
 +(NSArray <StoreItem *> *)storeItemsPurchasedWithType:(StoreItemType)type;
@@ -357,10 +368,6 @@ typedef BOOL(^LockRules)(UIViewController *controller, NSInteger rule);
 // Дата когда юзер в самый первый раз поставил (купил) апку из стора и ее версия на тот момент
 +(NSDate   *)firstInstallDate;
 +(NSString *)firstInstallAppVersion;
-
-// Сравнение с датой или версией
-//+(BOOL)firstInstallDateIsOlderDate:(NSDate   *)date;    // Deprecated, use StoreItem -setAsPurchasedForPeriods:"
-//+(BOOL)firstInstallIsOlderVersion: (NSString *)version; // Deprecated, use StoreItem -setAsPurchasedForPeriods:"
 
 // Здесь описываются проверки, при которых требуется например показать определенное окно с покупками. Эти проверки будут выполнены, когда будет вызван метод isLockWithController:
 +(void)setLockRules:(LockRules)lockRules;
