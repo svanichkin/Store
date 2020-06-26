@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 2.3.1
+//  Version 2.4
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -931,6 +931,8 @@ updatedTransactions:(NSArray        *)transactions
 
 @property (nonatomic, assign) BOOL isSetupProgress;
 
+@property (nonatomic, assign) RestoreCompletion setupWithURLCompletion;
+
 @end
 
 @implementation Store
@@ -961,6 +963,8 @@ updatedTransactions:(NSArray        *)transactions
     
     Store.current.isSetupProgress = YES;
     
+    Store.current.setupWithURLCompletion = nil;
+    
     NSURL *url =
     [NSURL
      URLWithString:urlString];
@@ -976,17 +980,14 @@ updatedTransactions:(NSArray        *)transactions
     [NSUserDefaults.standardUserDefaults
      synchronize];
      
-    if (!Store.isReady)
-    {
-        Store.current.sharedSecret =
-        [NSUserDefaults.standardUserDefaults
-         objectForKey:STORE_SHAREDSECRET];
-        
-        Store.current.storeItems   =
-        [self
-         storeItemsWithArray:[NSUserDefaults.standardUserDefaults
-                              objectForKey:STORE_iTEMS]];
-    }
+    Store.current.sharedSecret =
+    [NSUserDefaults.standardUserDefaults
+     objectForKey:STORE_SHAREDSECRET];
+    
+    Store.current.storeItems =
+    [self
+     storeItemsWithArray:[NSUserDefaults.standardUserDefaults
+                          objectForKey:STORE_iTEMS]];
     
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(void)
     {
@@ -1021,42 +1022,45 @@ updatedTransactions:(NSArray        *)transactions
         [NSData
          dataWithContentsOfURL:url];
         
-        if (!jsonData)
+        NSDictionary *jsonObject;
+        
+        if (jsonData)
+            jsonObject =
+            [NSJSONSerialization
+             JSONObjectWithData:jsonData
+             options:0
+             error:nil];
+
+        if (!jsonData || !jsonObject)
         {
-            dispatch_async(dispatch_get_main_queue(), ^(void)
+            if (Store.current.sharedSecret.length == 0)
             {
-                [Store.current
-                 restoreProductsCompletion:^(NSError *error)
+                Store.current.setupWithURLCompletion =
+                completion;
+                
+                Store.current.isSetupProgress = NO;
+                
+                if (completion)
+                    completion([NSError
+                                errorWithDomain:@"Store"
+                                code:-1
+                                userInfo:@{NSLocalizedDescriptionKey:@"Invalid Store Config, json data is nil or incorrected."}]);
+            }
+            
+            else
+            {
+                dispatch_async(dispatch_get_main_queue(), ^(void)
                 {
-                    Store.current.isSetupProgress = NO;
-              
-                    if (completion)
-                        completion(error);
-                }];
-            });
-          
-            return;
-        }
-
-        NSDictionary *jsonObject =
-        [NSJSONSerialization
-         JSONObjectWithData:jsonData
-         options:0
-         error:nil];
-
-        if (!jsonObject)
-        {
-            dispatch_async(dispatch_get_main_queue(), ^(void)
-            {
-                [Store.current
-                 restoreProductsCompletion:^(NSError *error)
-                 {
-                    Store.current.isSetupProgress = NO;
-                    
-                    if (completion)
-                        completion(error);
-                }];
-            });
+                    [Store.current
+                     restoreProductsCompletion:^(NSError *error)
+                    {
+                        Store.current.isSetupProgress = NO;
+                        
+                        if (completion)
+                            completion(error);
+                    }];
+                });
+            }
             
             return;
         }
@@ -1444,7 +1448,7 @@ updatedTransactions:(NSArray        *)transactions
     if (self.url)
         [Store
          setupWithURLString:self.url.absoluteString
-         completion:nil];
+         completion:Store.current.setupWithURLCompletion];
     
     else
         [self
@@ -1476,7 +1480,10 @@ updatedTransactions:(NSArray        *)transactions
         NSLog(@"[ERROR] Store: Loading products failed. Store setup is not completed, shared secret or idientifiers is empty!");
         
         if (completion)
-            completion(nil);
+            completion([NSError
+                        errorWithDomain:@"Store"
+                        code:-1
+                        userInfo:@{NSLocalizedDescriptionKey:@"Loading products failed. Store setup is not completed, shared secret or idientifiers is empty!"}]);
         
         return;
     }
