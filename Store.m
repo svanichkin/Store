@@ -931,7 +931,7 @@ updatedTransactions:(NSArray        *)transactions
 
 @property (nonatomic, assign) BOOL isSetupProgress;
 
-@property (nonatomic, assign) RestoreCompletion setupWithURLCompletion;
+@property (nonatomic,   copy) RestoreCompletion setupWithURLCompletion;
 
 @end
 
@@ -1035,16 +1035,19 @@ updatedTransactions:(NSArray        *)transactions
         {
             if (Store.current.sharedSecret.length == 0)
             {
-                Store.current.setupWithURLCompletion =
-                completion;
-                
-                Store.current.isSetupProgress = NO;
-                
-                if (completion)
-                    completion([NSError
-                                errorWithDomain:@"Store"
-                                code:-1
-                                userInfo:@{NSLocalizedDescriptionKey:@"Invalid Store Config, json data is nil or incorrected."}]);
+                dispatch_async(dispatch_get_main_queue(), ^(void)
+                {
+                    Store.current.setupWithURLCompletion =
+                    completion;
+                    
+                    Store.current.isSetupProgress = NO;
+                    
+                    if (completion)
+                        completion([NSError
+                                    errorWithDomain:@"Store"
+                                    code:-1
+                                    userInfo:@{NSLocalizedDescriptionKey:@"Invalid Store Config, json data is nil or incorrected."}]);
+                });
             }
             
             else
@@ -1448,7 +1451,7 @@ updatedTransactions:(NSArray        *)transactions
     if (self.url)
         [Store
          setupWithURLString:self.url.absoluteString
-         completion:Store.current.setupWithURLCompletion];
+         completion:self.setupWithURLCompletion];
     
     else
         [self
