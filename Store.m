@@ -43,9 +43,10 @@
     if (self = [super init])
     {
         self.purchaseCompletions = NSMutableArray.new;
-        self.purchaseQueue       = SKPaymentQueue.new;
+        self.purchaseQueue       = SKPaymentQueue.defaultQueue;
         
-        [self.purchaseQueue addTransactionObserver:self];
+        [self.purchaseQueue
+         addTransactionObserver:self];
     }
     
     return self;
@@ -502,7 +503,7 @@
 
 -(void)purchaseWithCompletion:(PurchaseCompletion)completion
 {
-    NSLog(@"[INFO] Store: Try purchaing product with identifier '%@'...",
+    NSLog(@"[INFO] Store: Try purchasing product with identifier '%@'...",
           _identifier);
     
     if (!self.product || !Store.isReady)
@@ -603,7 +604,7 @@
 
 -(void)consumablePurchaseDecrease
 {
-    NSLog(@"[INFO] Store: Purchaing decrease product from:%@ with identifier '%@'",
+    NSLog(@"[INFO] Store: Purchasing decrease product from:%@ with identifier '%@'",
           self.consumableCount,
           _identifier);
 
@@ -624,7 +625,7 @@
         [NSUserDefaults.standardUserDefaults
          synchronize];
         
-        NSLog(@"[INFO] Store: Purchaing product remove with identifier '%@'",
+        NSLog(@"[INFO] Store: Purchasing product remove with identifier '%@'",
               _identifier);
     }
     
@@ -633,7 +634,7 @@
         self.consumableCount =
         count;
         
-        NSLog(@"[INFO] Store: Purchaing decreased product to:%@ with identifier '%@'",
+        NSLog(@"[INFO] Store: Purchasing decreased product to:%@ with identifier '%@'",
               self.consumableCount,
               _identifier);
     }
