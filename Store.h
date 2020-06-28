@@ -309,6 +309,7 @@ typedef void(^PurchaseCompletion)(NSError *error);
 
 // После того как одноразовая покупка использована, необходимо делать сброс (например -1 монета)
 -(void)consumablePurchaseDecrease;
+-(void)consumablePurchaseDecreaseCount:(NSNumber *)decreaseCount;
 
 // Делает покупку приобретенной, на определенный период или несколько приодов
 -(void)setAsPurchasedForRanges:(NSArray <NSString *> *)ranges;

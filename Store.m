@@ -604,17 +604,26 @@
 
 -(void)consumablePurchaseDecrease
 {
+    [self 
+    consumablePurchaseDecreaseCount:@(1)];
+}
+
+-(void)consumablePurchaseDecreaseCount:(NSNumber *)decreaseCount
+{
     NSLog(@"[INFO] Store: Purchasing decrease product from:%@ with identifier '%@'",
           self.consumableCount,
           _identifier);
 
-    NSNumber *count =
-    self.consumableCount;
+    NSUInteger dCount =
+    labs(decreaseCount.integerValue);
+    
+    NSInteger count =
+    self.consumableCount.integerValue;
     
     count =
-    @(count.integerValue - 1);
+    count - dCount;
     
-    if (count.integerValue <= 0)
+    if (count <= 0)
     {
         self.consumableCount =
         nil;
@@ -632,7 +641,7 @@
     else
     {
         self.consumableCount =
-        count;
+        @(count);
         
         NSLog(@"[INFO] Store: Purchasing decreased product to:%@ with identifier '%@'",
               self.consumableCount,
