@@ -1,6 +1,6 @@
 //
 //  Store.h
-//  Version 2.4
+//  Version 2.4.1
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.

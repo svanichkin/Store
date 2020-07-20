@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 2.4
+//  Version 2.4.1
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -1530,8 +1530,16 @@ updatedTransactions:(NSArray        *)transactions
                     [searched addObject:identifier];
         
         if (searched.count == self.storeItems.count)
+        {
+            for (SKProduct *product in self.products)
+                for (StoreItem *s in self.storeItems)
+                    if ([s.identifier
+                         isEqualToString:product.productIdentifier])
+                        s.product = product;
+            
             return
             [self refreshReceipt];
+        }
         
         self.products = nil;
     }
