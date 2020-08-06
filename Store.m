@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 2.4.1
+//  Version 2.4.2
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -294,26 +294,18 @@
         
             else
             {
-                BOOL from = NO;
-                BOOL to   = NO;
+                NSComparisonResult from =
+                [self
+                 compareVersion:purchasedVersion
+                 toVersion:range[@"from"]];
                 
-                NSInteger maxCount =
-                MAX(purchasedVersion.count, range[@"from"].count);
-                
-                for (int i = 0; i < maxCount; i ++)
-                    if (i < range[@"from"].count   ? range[@"from"][i].intValue   : 0 <=
-                        i < purchasedVersion.count ? purchasedVersion[i].intValue : 0)
-                        from = YES;
-                
-                maxCount =
-                MAX(purchasedVersion.count, range[@"to"].count);
-                
-                for (int i = 0; i < maxCount; i ++)
-                    if (i < range[@"to"].count     ? range[@"to"][i].intValue     : 0 >=
-                        i < purchasedVersion.count ? purchasedVersion[i].intValue : 0)
-                        to = YES;
-                
-                if (from && to)
+                NSComparisonResult to =
+                [self
+                 compareVersion:purchasedVersion
+                 toVersion:range[@"to"]];
+
+                if ((from == NSOrderedDescending || from == NSOrderedSame) &&
+                    (to   == NSOrderedAscending  || to   == NSOrderedSame))
                 {
                     _startDate = Store.firstInstallDate;
                     
@@ -342,6 +334,34 @@
            purchased ? @"is purchased" : @"is not purchased");
     
     return purchased;
+}
+
+-(NSComparisonResult)compareVersion:(NSArray <NSString *> *)versionOneComp
+                          toVersion:(NSArray <NSString *> *)versionTwoComp
+{
+    NSInteger pos = 0;
+    
+    while (versionOneComp.count > pos || versionTwoComp.count > pos)
+    {
+        NSInteger v1 =
+        versionOneComp.count > pos ? versionOneComp[pos].intValue : 0;
+        
+        NSInteger v2 =
+        versionTwoComp.count > pos ? versionTwoComp[pos].intValue : 0;
+        
+        if (v1 < v2)
+            return
+            NSOrderedAscending;
+        
+        else if (v1 > v2)
+            return
+            NSOrderedDescending;
+        
+        pos ++;
+    }
+    
+    return
+    NSOrderedSame;
 }
 
 //   определенная дата: @"12/31/2020"
