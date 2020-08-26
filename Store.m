@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 2.4.2
+//  Version 2.5
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -44,9 +44,6 @@
     {
         self.purchaseCompletions = NSMutableArray.new;
         self.purchaseQueue       = SKPaymentQueue.defaultQueue;
-        
-        [self.purchaseQueue
-         addTransactionObserver:self];
     }
     
     return self;
@@ -563,6 +560,9 @@
     payment.quantity = 1;
     
     [self.purchaseQueue
+     addTransactionObserver:self];
+    
+    [self.purchaseQueue
      addPayment:payment];
 }
 
@@ -675,6 +675,9 @@
 
 -(void)returnCompletionsWithError:(NSError *)error
 {
+    [self.purchaseQueue
+     addTransactionObserver:self];
+    
     self.isPurchasing = NO;
     
     for (PurchaseCompletion completion in self.purchaseCompletions)
@@ -687,6 +690,8 @@
      object:error];
 }
 
+#pragma mark - Purchase Product Delegate
+
 -(void)paymentQueue:(SKPaymentQueue *)queue
 updatedTransactions:(NSArray        *)transactions
 {
@@ -694,6 +699,8 @@ updatedTransactions:(NSArray        *)transactions
     
     for (SKPaymentTransaction *transaction in transactions)
     {
+        NSLog (@"[INFO] Store: Transaction is [%@]", transaction.payment.productIdentifier);
+        
         if (![transaction.payment.productIdentifier isEqualToString:_identifier])
             continue;
         
@@ -1540,15 +1547,15 @@ updatedTransactions:(NSArray        *)transactions
     if (self.products)
     {
         NSLog (@"[INFO] Store: Products finded in cache...");
-        
+
         NSMutableArray <NSString *> *searched =
         NSMutableArray.new;
-        
+
         for (SKProduct *product in self.products)
             for (NSString *identifier in productIdentifiers)
                 if ([product.productIdentifier isEqualToString:identifier])
                     [searched addObject:identifier];
-        
+
         if (searched.count == self.storeItems.count)
         {
             for (SKProduct *product in self.products)
@@ -1556,22 +1563,27 @@ updatedTransactions:(NSArray        *)transactions
                     if ([s.identifier
                          isEqualToString:product.productIdentifier])
                         s.product = product;
-            
+
             return
             [self refreshReceipt];
         }
-        
+
         self.products = nil;
     }
+
+//    [self.restoreQueue
+//     restoreCompletedTransactions];
     
     self.productsRequest =
     [SKProductsRequest.alloc
      initWithProductIdentifiers:productIdentifiers];
-    
+
     self.productsRequest.delegate = self;
-    
+
     [self.productsRequest start];
 }
+
+#pragma mark - Product Restore Delegate
 
 -(void)productsRequest:(SKProductsRequest  *)request
     didReceiveResponse:(SKProductsResponse *)response
@@ -1602,6 +1614,35 @@ updatedTransactions:(NSArray        *)transactions
     
     [self
      refreshReceipt];
+}
+
+-(void)paymentQueue:(nonnull                  SKPaymentQueue *)queue
+updatedTransactions:(nonnull NSArray<SKPaymentTransaction *> *)transactions
+{
+    for (SKPaymentTransaction *transaction in transactions)
+    {
+        switch (transaction.transactionState)
+        {
+            case SKPaymentTransactionStateFailed:
+                break;
+                
+            case SKPaymentTransactionStateRestored:
+            {
+                [queue
+                 finishTransaction:transaction];
+                
+                break;
+            }
+
+            case SKPaymentTransactionStatePurchased:
+                break;
+                
+            case SKPaymentTransactionStatePurchasing:
+            case SKPaymentTransactionStateDeferred:
+            default:
+                break;
+        }
+    }
 }
 
 -(void)refreshReceipt
@@ -1663,11 +1704,7 @@ didFailWithError:(NSError   *)error
         NSLog(@"[ERROR] Store: %@", receiptError.localizedDescription);
         
         [self returnCompletionsWithError:receiptError];
-        
-        // This can happen if the user cancels the login screen for the store.
-        // If we get here it means there is no receipt and an attempt to get it failed because the user cancelled the login.
-        //[self trackFailedAttempt];
-        
+                
         return;
     }
     
@@ -1685,25 +1722,16 @@ didFailWithError:(NSError   *)error
     NSLog(@"[INFO] Store: Receipt setup (receipt.length = %lu)",
           (unsigned long)receipt.length);
 
-    #ifdef DEBUG
     BOOL sandbox =
-    Store.current.isSandbox = YES;
-    #else
-    BOOL sandbox =
-    Store.current.isSandbox = NO;
-    
-    if ([NSBundle.mainBundle.appStoreReceiptURL.absoluteString.lowercaseString
-         containsString:@"sandbox"])
-        sandbox =
-        Store.current.isSandbox = YES;
-    #endif
+    Store.current.isSandbox;
     
     NSLog(@"[INFO] Store: Receipt setup (sandbox = %@)",
           sandbox ? @"YES" : @"NO");
     
     // create the JSON object that describes the request
     NSDictionary *requestContents =
-    @{@"receipt-data":[receipt base64EncodedStringWithOptions:0],
+    @{@"receipt-data":[receipt
+                       base64EncodedStringWithOptions:0],
       @"password":self.sharedSecret};
 
     NSError *error = nil;
@@ -1716,20 +1744,24 @@ didFailWithError:(NSError   *)error
     
     if (error || !requestData)
     {
-         NSLog(@"[ERROR] Store: %@", error.localizedDescription);
+         NSLog(@"[ERROR] Store: %@",
+               error.localizedDescription);
         
-        [self returnCompletionsWithError:error];
+        [self
+         returnCompletionsWithError:error];
         
         return;
     }
     
     // create a POST request with the receipt data.
     NSURL *storeURL =
-    [NSURL URLWithString:@"https://buy.itunes.apple.com/verifyReceipt"];
+    [NSURL
+     URLWithString:@"https://buy.itunes.apple.com/verifyReceipt"];
     
     if (sandbox)
         storeURL =
-        [NSURL URLWithString:@"https://sandbox.itunes.apple.com/verifyReceipt"];
+        [NSURL
+         URLWithString:@"https://sandbox.itunes.apple.com/verifyReceipt"];
     
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(void)
     {
@@ -1757,7 +1789,8 @@ didFailWithError:(NSError   *)error
                 NSLog(@"[ERROR] Store: %@",
                       error.localizedDescription);
                 
-                [self returnCompletionsWithError:error];
+                [self
+                 returnCompletionsWithError:error];
             });
             
             return;
@@ -1776,13 +1809,15 @@ didFailWithError:(NSError   *)error
                 NSLog(@"[ERROR] Store: %@",
                       error.localizedDescription);
                 
-                [self returnCompletionsWithError:error];
+                [self
+                 returnCompletionsWithError:error];
             });
             
             return;
         }
         
-        NSLog(@"[INFO] Store: jsonResponse:%@", jsonResponse);
+        NSLog(@"[INFO] Store: jsonResponse:%@",
+              jsonResponse);
         
         /*
          {
@@ -1858,11 +1893,15 @@ didFailWithError:(NSError   *)error
              userInfo:@{NSLocalizedDescriptionKey:@"This receipt is valid but the subscription has expired. When this status code is returned to your server, the receipt data is also decoded and returned as part of the response. Only returned for iOS 6 style transaction receipts for auto-renewable subscriptions."}];
         
         if ([jsonResponse[@"status"] integerValue] == 21007)
-            receiptError =
-            [NSError
-             errorWithDomain:@"Store"
-             code:-1
-             userInfo:@{NSLocalizedDescriptionKey:@"This receipt is from the test environment, but it was sent to the production environment for verification. Send it to the test environment instead."}];
+        {
+            Store.current.isSandbox = YES;
+            
+            // Resend receipt to sandbox with no error
+            [self
+             encryptReceipt];
+            
+            return;
+        }
         
         if ([jsonResponse[@"status"] integerValue] == 21008)
             receiptError =
@@ -2202,13 +2241,6 @@ didFailWithError:(NSError   *)error
         Store.current.lockRules(controller, rule);
     
     return NO;
-}
-
-
--(void)paymentQueue:(nonnull                  SKPaymentQueue *)queue
-updatedTransactions:(nonnull NSArray<SKPaymentTransaction *> *)transactions
-{
-    
 }
 
 @end
