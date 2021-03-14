@@ -1,6 +1,6 @@
 //
 //  Store.h
-//  Version 2.5
+//  Version 2.6
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -230,10 +230,40 @@
     ]
  }
  
+ ////////////////////////////////////////////////////////////////////
+ 
+ Также можно обезопасить приложение от взлома, путем переноса проверки чека на ваш сервер. Или например сервис позволяюий сделать это, например AppHud. В этом методе можно безопасно вызвать синхронный запрос либо асинхронный. Например:
+ 
+ [Store
+  checkRawReceiptString:^NSDictionary *(BOOL sandbox)
+ {
+    __block NSDictionary *rawJSON = nil;
+    
+    dispatch_semaphore_t sem =
+    dispatch_semaphore_create(0);
+    
+    [Apphud
+     fetchRawReceiptInfo:^(ApphudReceipt *receipt)
+    {
+        rawJSON =
+        receipt.rawJSON;
+        
+        dispatch_semaphore_signal(sem);
+    }];
+    
+    dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
+    
+    return
+    rawJSON;
+ }];
+ 
 */
 
 #import <Foundation/Foundation.h>
 #import <StoreKit/StoreKit.h>
+
+#define ENABLE_iNFO_LOG  NO
+#define ENABLE_ERROR_LOG NO
 
 @class StoreItem;
 
@@ -311,7 +341,7 @@ typedef void(^PurchaseCompletion)(NSError *error);
 -(void)consumablePurchaseDecrease;
 -(void)consumablePurchaseDecreaseCount:(NSNumber *)decreaseCount;
 
-// Делает покупку приобретенной, на определенный период или несколько приодов
+// Делает покупку приобретенной, на определенный период или несколько периодов
 -(void)setAsPurchasedForRanges:(NSArray <NSString *> *)ranges;
 //   определенная дата: @"12/31/2020"
 //        диапазон дат: @"1/1/2020-12/31/2020" (включительно)
@@ -336,19 +366,23 @@ typedef void(^PurchaseCompletion)(NSError *error);
 #pragma mark - Store Manager
 
 typedef void(^RestoreCompletion)(NSError *error);
-
 typedef BOOL(^LockRules)(UIViewController *controller, NSInteger rule);
+typedef NSDictionary *(^RawRecieptHandler)(BOOL sandbox);
 
 @interface Store : NSObject
 
-// Валидация через конфиг с сервера (конфиг кешируется и перепроверяется иногда)
+// Валидация через конфигурационный файл с вашего сервера (конфиг кешируется и перепроверяется иногда)
 +(void)setupWithURLString:(NSString        *)urlString
                completion:(RestoreCompletion)completion;
 
-// Ключ для валидации чека на сервере эпл (берется из кабинета встроенных покупок)
+// Ключ для валидации чека на сервере эпл (ключ берется из кабинета встроенных покупок)
 +(void)setupWithSharedSecret:(NSString              *)sharedSecret
                   storeItems:(NSArray <StoreItem *> *)storeItems // @[@"com.purchase.year".storeItem.consumable]
                   completion:(RestoreCompletion      )completion;
+
+// Метод принимает RAW JSON выданный сервером Эпл
+// нобходим, если вы проводите проверку чека на своем сервере
++(void)checkRawReceiptString:(RawRecieptHandler)rawRecieptHandler;
 
 // Если isReady по каким то причинам NO, нужно еще раз произвести восстановление покупок
 +(void)restoreWithCompletion:(RestoreCompletion)completion;
