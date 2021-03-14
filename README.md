@@ -78,3 +78,26 @@ In the place where you need to spend (or show the shopping window, if not one), 
 In this case, when you go to the page, the check specified in the setLockRules block is performed: it will be spent one consumable purchase and the user will follow shouldPerformSegueWithIdentifier: either there will be no transition, and instead the MyStoreController controller will be shown, from the setRules block.
 
 isLockWithController: returns YES / NO, based on return from setLockRules:
+
+You can also protect the application from hacking, by transferring check check to your server. Or such a service allow you to do this, such as Apphud. In this method, you can safely cause a synchronous request or asynchronous. For instance:
+```
+  [Store checkRawReceiptString:^NSDictionary *(BOOL sandbox)
+  {
+      __block NSDictionary *rawJSON = nil;
+    
+      dispatch_semaphore_t sem =
+      dispatch_semaphore_create(0);
+    
+      [Apphud fetchRawReceiptInfo:^(ApphudReceipt *receipt)
+      {
+          rawJSON =
+          receipt.rawJSON;
+        
+          dispatch_semaphore_signal(sem);
+      }];
+    
+      dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
+    
+      return rawJSON;
+  }];
+```
