@@ -1,6 +1,6 @@
 //
 //  Store.h
-//  Version 2.6
+//  Version 3.1
 //
 //  Created by Сергей Ваничкин on 10/23/18.
 //  Copyright © 2018 👽 Technology. All rights reserved.
@@ -235,7 +235,7 @@
  Также можно обезопасить приложение от взлома, путем переноса проверки чека на ваш сервер. Или например сервис позволяюий сделать это, например AppHud. В этом методе можно безопасно вызвать синхронный запрос либо асинхронный. Например:
  
  [Store
-  checkRawReceiptString:^NSDictionary *(BOOL sandbox)
+  checkRawReceipt:^NSDictionary *(BOOL sandbox)
  {
     __block NSDictionary *rawJSON = nil;
     
@@ -262,8 +262,17 @@
 #import <Foundation/Foundation.h>
 #import <StoreKit/StoreKit.h>
 
-#define ENABLE_iNFO_LOG  NO
-#define ENABLE_ERROR_LOG NO
+#if DEBUG
+#define ENABLE_STORE_iNFO_LOG  YES
+#define ENABLE_STORE_ERROR_LOG YES
+#else
+#define ENABLE_STORE_iNFO_LOG  NO
+#define ENABLE_STORE_ERROR_LOG NO
+#endif
+
+// Включает возможность запросить логи методом [Store logs]
+// Он не зависим от двух других парамтров выше и включает все логи
+#define ENABLE_STORE_LOG_WITH_METHOD YES
 
 @class StoreItem;
 
@@ -301,41 +310,41 @@ typedef void(^PurchaseCompletion)(NSError *error);
 
 @interface StoreItem : NSObject
 
-@property (nonatomic, strong, readonly) NSString        *identifier;
-@property (nonatomic, assign, readonly) StoreItemType    type;
-@property (nonatomic, assign, readonly) StoreItemPeriod  period;
+@property (nonatomic, strong, readonly) NSString                 *identifier;
+@property (nonatomic, assign, readonly) StoreItemType             type;
+@property (nonatomic, assign, readonly) StoreItemPeriod           period;
 
-@property (nonatomic, strong, readonly) NSString        *title;
-@property (nonatomic, strong, readonly) NSString        *titleWithPrice;
-@property (nonatomic, strong, readonly) NSString        *detail;
+@property (nonatomic, strong, readonly) NSString                 *title;
+@property (nonatomic, strong, readonly) NSString                 *titleWithPrice;
+@property (nonatomic, strong, readonly) NSString                 *detail;
 
-@property (nonatomic, strong, readonly) NSNumber        *priceNumber;
-@property (nonatomic, strong, readonly) NSString        *priceString;
+@property (nonatomic, strong, readonly) NSNumber                 *priceNumber;
+@property (nonatomic, strong, readonly) NSString                 *priceString;
 
-@property (nonatomic, strong, readonly) NSString        *currencyCode;   // USD
-@property (nonatomic, strong, readonly) NSString        *currencySymbol; // $
+@property (nonatomic, strong, readonly) NSString                 *currencyCode;   // USD
+@property (nonatomic, strong, readonly) NSString                 *currencySymbol; // $
 
 // Дополнительный расчет, сколько примерно в неделю и в месяц выйдет для юзера эта покупка
-@property (nonatomic, strong, readonly) NSString        *pricePerWeekString;
-@property (nonatomic, strong, readonly) NSString        *pricePerMonthString;
+@property (nonatomic, strong, readonly) NSString                 *pricePerWeekString;
+@property (nonatomic, strong, readonly) NSString                 *pricePerMonthString;
 
 // Совершает покупку, либо восстанавливает
 -(void)purchaseWithCompletion:(PurchaseCompletion)completion;
 
 // Есть ли на сервере покупка с данным айдишником
-@property (nonatomic, assign, readonly) BOOL             isInvalid;
+@property (nonatomic, assign, readonly) BOOL                      isInvalid;
 
-@property (nonatomic, assign, readonly) BOOL             isPurchased;
+@property (nonatomic, assign, readonly) BOOL                      isPurchased;
 
 @property (nonatomic, strong, readonly) NSString                 *transactionId;
 @property (nonatomic, assign, readonly) SKPaymentTransactionState transactionState;
 
 // Устанавливает значение количества единиц которые будут
 // инкрементированы после приобретения данной одноразовой покупки (например +100 монет)
-@property (nonatomic, strong) NSNumber *defaultConsumableCount;
+@property (nonatomic, strong)           NSNumber                 *defaultConsumableCount;
 
 // Количество оставшихся единиц в одноразовой покупке (например 83 монеты)
-@property (nonatomic, strong, readonly) NSNumber *consumableCount;
+@property (nonatomic, strong, readonly) NSNumber                 *consumableCount;
 
 // После того как одноразовая покупка использована, необходимо делать сброс (например -1 монета)
 -(void)consumablePurchaseDecrease;
@@ -349,9 +358,9 @@ typedef void(^PurchaseCompletion)(NSError *error);
 //     диапазон версий: @"1.0-3.0.1" (включительно)
 
 // Время действия покупки
-@property (nonatomic, strong, readonly) NSDate          *startDate;
-@property (nonatomic, strong, readonly) NSDate          *endDate;
-@property (nonatomic, assign, readonly) BOOL             isTrial;
+@property (nonatomic, strong, readonly) NSDate                   *startDate;
+@property (nonatomic, strong, readonly) NSDate                   *endDate;
+@property (nonatomic, assign, readonly) BOOL                      isTrial;
 
 // Устанавливает тип для Store Item, затем возвращает этот Store Item
 -(StoreItem *)consumable;
@@ -375,16 +384,16 @@ typedef NSDictionary *(^RawRecieptHandler)(BOOL sandbox);
 +(void)setupWithURLString:(NSString        *)urlString
                completion:(RestoreCompletion)completion;
 
-// Ключ для валидации чека на сервере эпл (ключ берется из кабинета встроенных покупок)
+// Ключ для валидации чека на сервере эпл (SharedSecret из кабинета встроенных покупок)
 +(void)setupWithSharedSecret:(NSString              *)sharedSecret
                   storeItems:(NSArray <StoreItem *> *)storeItems // @[@"com.purchase.year".storeItem.consumable]
                   completion:(RestoreCompletion      )completion;
 
-// Метод принимает RAW JSON выданный сервером Эпл
-// нобходим, если вы проводите проверку чека на своем сервере
-+(void)checkRawReceiptString:(RawRecieptHandler)rawRecieptHandler;
+// Метод принимает RAW JSON выданный сервером Эпл нeoбходим,
+// если вы проводите проверку чека на своем сервере
++(void)checkRawReceipt:(RawRecieptHandler)rawRecieptHandler;
 
-// Если isReady по каким то причинам NO, нужно еще раз произвести восстановление покупок
+// Восстановление покупок в ручном режиме (с сервера эпл, без проверки чека)
 +(void)restoreWithCompletion:(RestoreCompletion)completion;
 
 // Создает покупку либо находит в имеющихся
@@ -409,5 +418,11 @@ typedef NSDictionary *(^RawRecieptHandler)(BOOL sandbox);
 +(BOOL)isLockWithController:(UIViewController *)controller; // Контроллер в котором желательно показать окно покупок
 +(BOOL)isLockWithController:(UIViewController *)controller  // Если требуется проверка по определенному правилу,
                        rule:(NSInteger         )rule;       // передаем номер этого правила
+
++(NSData *)receipt;     // Рецепт с диска устройства
++(NSData *)receiptJSON; // Рецепт от сервера Apple
+
++(void)reset; // Обнуляет все сохраненные данные
++(NSData *)logs; // Если включен параметр ENABLE_STORE_LOG_WITH_METHOD
 
 @end
