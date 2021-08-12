@@ -2,8 +2,8 @@
 //  Store.h
 //  Version 3.1
 //
-//  Created by Сергей Ваничкин on 10/23/18.
-//  Copyright © 2018 👽 Technology. All rights reserved.
+//  Created by Sergey Vanichkin on 10/23/18.
+//  Copyright © 2018 Sergey Vanichkin. All rights reserved.
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
