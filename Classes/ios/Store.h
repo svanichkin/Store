@@ -1,6 +1,6 @@
 //
 //  Store.h
-//  Version 3.1
+//  Version 3.1.1
 //
 //  Created by Sergey Vanichkin on 10/23/18.
 //  Copyright © 2018 Sergey Vanichkin. All rights reserved.
@@ -335,6 +335,9 @@ typedef void(^PurchaseCompletion)(NSError *error);
 @property (nonatomic, assign, readonly) BOOL                      isInvalid;
 
 @property (nonatomic, assign, readonly) BOOL                      isPurchased;
+
+// Если в покупка временно отключа из продаж (из подгружающегося конфига)
+@property (nonatomic, assign, readonly) BOOL                      isNotForSell;
 
 @property (nonatomic, strong, readonly) NSString                 *transactionId;
 @property (nonatomic, assign, readonly) SKPaymentTransactionState transactionState;

@@ -16,7 +16,7 @@ Pod::Spec.new do |spec|
   #
 
   spec.name         = "svanichkin_Store"
-  spec.version      = "3.1.0"
+  spec.version      = "3.1.1"
   spec.summary      = "A simple but unusually powerful class for working with all types of in-app purchases (consumable, nonConsumable, autoRenewable, nonRenewing)."
 
   # This description is used to generate tags and improve search results.

@@ -1,6 +1,6 @@
 //
 //  Store.m
-//  Version 3.1
+//  Version 3.1.1
 //
 //  Created by Sergey Vanichkin on 10/23/18.
 //  Copyright © 2018 Sergey Vanichkin. All rights reserved.
@@ -72,6 +72,11 @@
 -(void)setIsTrial:(BOOL)isTrial
 {
     _isTrial = isTrial;
+}
+
+-(void)setIsNotForSell:(BOOL)isNotForSell
+{
+    _isNotForSell = isNotForSell;
 }
 
 -(void)setType:(StoreItemType)type
@@ -1225,6 +1230,7 @@ updatedTransactions:(NSArray        *)transactions
 #define CONFiG_iDENTiFiER   @"identifier"
 #define CONFiG_TYPE         @"type"
 #define CONFiG_COUNT        @"count"
+#define CONFiG_NOT_FOR_SELL @"notForSell"
 #define CONFiG_AS_RANGE     @"asPurchasedForRanges"
 
 #define TYPE_CONSUMABLE     @"consumable"
@@ -1527,6 +1533,11 @@ updatedTransactions:(NSArray        *)transactions
                 storeItem.period =
                 StoreItemPeriodYear;
         }
+        
+        if (dictionary[CONFiG_NOT_FOR_SELL])
+            storeItem.isNotForSell =
+            [dictionary[CONFiG_NOT_FOR_SELL]
+             boolValue];
         
         if (dictionary[CONFiG_AS_RANGE])
             [storeItem
